@@ -248,6 +248,75 @@ function renderIncidents(incidents) {
   section.hidden = false;
 }
 
+// Collapsed groups show one line per monitor instead of a card. A group the
+// visitor has toggled keeps that choice; otherwise the group setting decides,
+// and 'auto' collapses long groups as long as everything in them is up.
+function startsCompact(group, monitors) {
+  const setting = data.groups?.[group]?.compact ?? 'auto';
+  if (setting !== 'auto') return setting;
+  const { mode, threshold } = data.site.groupCompact ?? { mode: 'auto', threshold: 4 };
+  if (mode === 'never') return false;
+  if (mode === 'always') return true;
+  return monitors.length > threshold && monitors.every((monitor) => monitor.status === 'up');
+}
+
+function summarize(monitors) {
+  const broken = monitors.filter((monitor) => monitor.status === 'down' || monitor.status === 'partial');
+  const degraded = monitors.filter((monitor) => monitor.status === 'degraded');
+  const parts = [`${monitors.length} monitors`];
+  if (broken.length) parts.push(`${broken.length} down`);
+  else if (degraded.length) parts.push(`${degraded.length} degraded`);
+  else parts.push('all operational');
+  return parts.join(' · ');
+}
+
+function renderCompactRow(monitor) {
+  const row = el('div', 'compact-row');
+  row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
+  row.append(el('span', 'dot'));
+
+  const name = el('span', 'compact-name');
+  if (monitor.url) {
+    const link = el('a', null, monitor.name);
+    link.href = monitor.url;
+    link.rel = 'noopener';
+    name.append(link);
+  } else {
+    name.append(el('span', null, monitor.name));
+  }
+  row.append(name);
+  row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
+  row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime[rangeKey()])));
+  return row;
+}
+
+function renderGroup(group, monitors) {
+  const stored = localStorage.getItem(`group:${group}`);
+  const compact = stored ? stored === 'compact' : startsCompact(group, monitors);
+
+  const head = el('button', 'group-head');
+  head.type = 'button';
+  head.setAttribute('aria-expanded', String(!compact));
+  const label = el('span', 'group-title', group);
+  const caret = svg('svg', { viewBox: '0 0 24 24' });
+  caret.append(svg('path', { d: 'M6 9l6 6 6-6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  label.append(caret);
+  head.append(label, el('span', 'group-summary', summarize(monitors)));
+  head.addEventListener('click', () => {
+    localStorage.setItem(`group:${group}`, compact ? 'expanded' : 'compact');
+    renderMonitors();
+  });
+  monitorsEl.append(head);
+
+  if (!compact) {
+    for (const monitor of monitors) monitorsEl.append(renderCard(monitor));
+    return;
+  }
+  const list = el('div', 'compact');
+  for (const monitor of monitors) list.append(renderCompactRow(monitor));
+  monitorsEl.append(list);
+}
+
 function renderMonitors() {
   monitorsEl.replaceChildren();
   const groups = new Map();
@@ -257,8 +326,11 @@ function renderMonitors() {
     groups.get(key).push(monitor);
   }
   for (const [group, monitors] of groups) {
-    if (group) monitorsEl.append(el('h3', 'group-title', group));
-    for (const monitor of monitors) monitorsEl.append(renderCard(monitor));
+    if (!group) {
+      for (const monitor of monitors) monitorsEl.append(renderCard(monitor));
+      continue;
+    }
+    renderGroup(group, monitors);
   }
 }
 

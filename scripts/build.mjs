@@ -40,7 +40,7 @@ function uptime(days) {
   return Math.round((ok / checks) * 10000) / 100;
 }
 
-const { site, monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
+const { site, groups, monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
 const state = readJson('history/state.json', {});
 const incidents = readJson('history/incidents.json', []);
 const keys = dayKeys(DAYS);
@@ -127,6 +127,7 @@ writeFileSync(
       generatedAt: new Date().toISOString(),
       live,
       site,
+      groups,
       overall,
       days: DAYS,
       monitors: summaryMonitors,

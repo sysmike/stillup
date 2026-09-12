@@ -44,6 +44,36 @@ someone else from claiming it if this repository is renamed or deleted. If DNS
 is proxied through Cloudflare, keep the record DNS-only until GitHub has issued
 the certificate.
 
+## Groups
+
+A monitor with a `group` is listed under that heading. A collapsed group is
+shown compactly, one line per monitor with its status and uptime, instead of a
+card with the 90 day history. Clicking the heading toggles it, and that choice
+is remembered in the visitor's browser.
+
+`SITE_GROUP_COMPACT` decides the default:
+
+| Value | Behaviour |
+| --- | --- |
+| `auto` (default) | A group starts compact when it holds more than four monitors and all of them are up |
+| a number | Same, with that number instead of four |
+| `always` | Every group starts compact |
+| `never` | Every group starts expanded |
+
+A group that contains something down or degraded is never collapsed by the
+`auto` rule: an outage stays visible without a click.
+
+A single group can override the default with a `GROUP_<NAME>` variable, where
+the name matches the group the monitors refer to:
+
+```
+GROUP_INTERNAL   compact
+GROUP_PUBLIC     expanded
+```
+
+`compact`, `always`, `true` and `yes` mean the same thing, as do `expanded`,
+`never`, `false` and `no`. `auto` falls back to the site rule.
+
 ## Site variables
 
 | Variable | Default | Description |
@@ -53,6 +83,7 @@ the certificate.
 | `SITE_LINK` | none | Link in the footer |
 | `SITE_LOGO` | none | Logo URL shown next to the title |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
+| `SITE_GROUP_COMPACT` | `auto` | `auto`, `always`, `never`, or a number to change the `auto` threshold |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues |
 

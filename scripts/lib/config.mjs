@@ -9,6 +9,7 @@
 // kept out of the published site and out of incident issues.
 
 const MONITOR_PREFIX = 'MONITOR_';
+const GROUP_PREFIX = 'GROUP_';
 
 const DEFAULTS = {
   method: 'GET',
@@ -45,6 +46,15 @@ function parseValue(name, raw) {
     }
   }
   return { url: trimmed };
+}
+
+// A group is compact when collapsed: true always, false never, 'auto' when the
+// site rule says so.
+function normalizeCompact(value) {
+  const word = String(value).trim().toLowerCase();
+  if (['true', 'always', 'compact', 'yes'].includes(word)) return true;
+  if (['false', 'never', 'expanded', 'no'].includes(word)) return false;
+  return 'auto';
 }
 
 function normalizeExpected(expected) {
@@ -126,7 +136,23 @@ export function loadConfig(varsJson, secretsJson) {
 
   monitors.sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.name.localeCompare(b.name));
 
+  // GROUP_<NAME> overrides the site rule for one group.
+  const groups = {};
+  for (const [name, raw] of Object.entries({ ...vars, ...secrets })) {
+    if (!name.startsWith(GROUP_PREFIX)) continue;
+    const value = raw.trim();
+    if (!value) continue;
+    const parsed = value.startsWith('{') ? JSON.parse(value) : { compact: value };
+    const slug = slugify(name.slice(GROUP_PREFIX.length));
+    const match = monitors.find((monitor) => monitor.group && slugify(monitor.group) === slug);
+    groups[match?.group || titleize(slug)] = { compact: normalizeCompact(parsed.compact) };
+  }
+
+  const compact = String(vars.SITE_GROUP_COMPACT || 'auto').trim().toLowerCase();
   const site = {
+    groupCompact: /^\d+$/.test(compact)
+      ? { mode: 'auto', threshold: Number(compact) }
+      : { mode: ['always', 'never'].includes(compact) ? compact : 'auto', threshold: 4 },
     title: vars.SITE_TITLE || 'Status',
     description: vars.SITE_DESCRIPTION || '',
     link: vars.SITE_LINK || '',
@@ -142,5 +168,5 @@ export function loadConfig(varsJson, secretsJson) {
       .filter(Boolean),
   };
 
-  return { site, monitors, incidents };
+  return { site, groups, monitors, incidents };
 }

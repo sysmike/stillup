@@ -301,11 +301,102 @@ main.shell {
   gap: 12px;
 }
 
-.group-title {
+.group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
   margin: 18px 0 -2px;
+  padding: 2px 2px 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
+}
+
+.group-head:hover .group-title {
+  color: var(--text);
+}
+
+.group-title svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  transition: transform 0.15s;
+}
+
+.group-head[aria-expanded='true'] .group-title svg {
+  transform: rotate(180deg);
+}
+
+.group-summary {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.compact {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.compact-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.compact-row:first-child {
+  border-top: 0;
+}
+
+.compact-name {
+  flex: 1;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-name a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.compact-name a:hover {
+  text-decoration: underline;
+}
+
+.compact-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.compact-uptime {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--status, var(--text));
+  min-width: 58px;
+  text-align: right;
 }
 
 .card {
