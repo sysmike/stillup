@@ -376,15 +376,15 @@ main.shell {
    motion.
 
    The ring is drawn as a gradient with soft edges, which scales without the
-   shimmer a hard edge shows at this size. */
+   shimmer a hard edge shows at this size, on a sinusoidal curve. */
 @keyframes status-pulse {
   0%,
   100% {
-    transform: scale(1);
+    transform: scale(0.75);
     opacity: 0.55;
   }
   50% {
-    transform: scale(1.35);
+    transform: scale(1);
     opacity: 0.12;
   }
 }
@@ -395,8 +395,11 @@ main.shell {
     content: '';
     position: absolute;
     /* Wider than the dot, so the band of the gradient falls outside it rather
-       than on top of it, where it would be invisible. */
-    inset: -5px;
+       than on top of it, where it would be invisible. Sized for the widest the
+       ring gets, because the animation only ever scales it down: Firefox
+       rasterises the layer once at its layout size and stretching that raster
+       is what made the ring wobble. */
+    inset: -8px;
     border-radius: 50%;
     background: radial-gradient(
       circle closest-side,
@@ -405,7 +408,7 @@ main.shell {
       transparent 92%
     );
     will-change: transform, opacity;
-    animation: status-pulse 4s ease-in-out infinite;
+    animation: status-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
 
