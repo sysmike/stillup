@@ -133,7 +133,8 @@ response times. Set `link` if the card should point somewhere anyway. Adding
 
 Clicking a monitor, in either view, opens its details: current status, uptime
 over today, 7 and 30 days, the day by day history, the response time of the
-last 7 days, and the incidents that refer to it. The monitored URL is a link
+last 7 days, and the incidents that refer to it. The history there is always
+the full 90 days, whatever the range buttons on the page are set to. The monitored URL is a link
 in there rather than on the card, so clicking a monitor shows its history
 instead of navigating away.
 
