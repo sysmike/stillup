@@ -840,3 +840,8 @@ main.shell {
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+
+.strip-block {
+  display: inline-block;
+  max-width: 100%;
+}

@@ -95,7 +95,14 @@ const rangeKey = () => (range === 7 ? 'week' : range === 30 ? 'month' : 'quarter
 // Whole pixel geometry: a bar and a gap of integer width, with the day count
 // derived from them. The cell grows when the range caps the count, so a strip
 // still reaches the end of the space it was given instead of stopping short.
-function stripLayout(width, minBar, gap) {
+function stripLayout(width, minBar, gap, exact = false) {
+  // The detail view always shows the whole range, so there the bars narrow to
+  // fit rather than the strip dropping days. The gap narrows with them, or a
+  // cramped strip ends up mostly gap.
+  if (exact) {
+    const cell = Math.max(2, Math.floor((width + gap) / range));
+    return { cell, gap: cell >= 4 ? gap : 1, count: range };
+  }
   const minCell = minBar + gap;
   const wanted = Math.max(7, Math.min(range, Math.floor((width + gap) / minCell)));
   const cell = Math.max(minCell, Math.round((width + gap) / wanted));
@@ -105,9 +112,9 @@ function stripLayout(width, minBar, gap) {
 // Bars are laid out on whole pixels. Letting flex share the space instead gives
 // them fractional widths, and rounding those to device pixels is what made the
 // spacing look uneven every few days.
-function renderBars(monitor, width = monitorsEl.clientWidth - 40, minBar = 3, gap = 2) {
+function renderBars(monitor, width = monitorsEl.clientWidth - 40, minBar = 3, gap = 2, exact = false) {
   const bars = el('div', 'bars');
-  const layout = stripLayout(width, minBar, gap);
+  const layout = stripLayout(width, minBar, gap, exact);
   bars.style.setProperty('--bar', `${layout.cell - layout.gap}px`);
   bars.style.setProperty('--gap', `${layout.gap}px`);
   const days = monitor.days.slice(-layout.count);
@@ -403,7 +410,11 @@ async function openDetail(slug) {
 
   if (!dialog.open) dialog.showModal();
   // Bars need the dialog's width, which only exists once it is open.
-  history.append(...renderBars(monitor, detailBody.clientWidth));
+  // Strip and scale share a block that shrinks to the strip, so the labels sit
+  // at its ends even when 90 whole pixel bars cannot fill the dialog exactly.
+  const strip = el('div', 'strip-block');
+  strip.append(...renderBars(monitor, detailBody.clientWidth, 3, 2, true));
+  history.append(strip);
 
   try {
     if (!chartCache.has(slug)) {
@@ -523,8 +534,9 @@ function renderCompactRow(monitor) {
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
   row.append(el('span', 'dot'), el('span', 'compact-name', monitor.name));
 
-  // Half the width a card gives its strip, with a tighter cell to match.
-  const [bars] = renderBars(monitor, Math.max(80, monitorsEl.clientWidth * 0.22), 3, 1);
+  // The row is narrower than a card, so the strip is sized for what is left
+  // once the name, status and figure have taken their share.
+  const [bars] = renderBars(monitor, Math.max(120, monitorsEl.clientWidth * 0.45), 3, 1);
   bars.classList.add('bars-compact');
   row.append(bars);
 
