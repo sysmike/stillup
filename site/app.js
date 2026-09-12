@@ -369,7 +369,7 @@ async function openDetail(slug) {
   detailBody.replaceChildren();
   const head = el('div', 'detail-head');
   head.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
-  head.append(el('span', 'dot'), el('span', null, monitor.name));
+  head.append(el('span', monitor.status === 'none' ? 'dot is-idle' : 'dot'), el('span', null, monitor.name));
   detailBody.append(head);
 
   const meta = el('p', 'detail-meta');
@@ -521,7 +521,7 @@ function fillPendingStrips() {
 function renderRow(monitor) {
   const row = el('div', 'row');
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
-  row.append(el('span', 'dot'), el('span', 'row-name', monitor.name));
+  row.append(el('span', monitor.status === 'none' ? 'dot is-idle' : 'dot'), el('span', 'row-name', monitor.name));
 
   // How much room the strip gets depends on the name, status and figure beside
   // it, which is only known once the row is laid out. It is filled afterwards
