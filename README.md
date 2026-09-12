@@ -4,15 +4,7 @@ Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime) that
 Action, history is committed to this repository, outages open and close GitHub
 issues, and the status page is published with GitHub Pages.
 
-<details>
-  <summary>Screenshots — status page, monitor details, incident view, mobile</summary>
-  <br>
-  <img src=".screenshots/dark.png" width="45%" align="top" alt="Status page in the dark theme">
-  <img src=".screenshots/light.png" width="45%" align="top" alt="Status page in the light theme">
-  <img src=".screenshots/detail.png" width="45%" align="top" alt="Monitor details with history, response time and incidents">
-  <img src=".screenshots/incident.png" width="45%" align="top" alt="Incident read on the status page itself">
-  <img src=".screenshots/mobile.png" width="22%" align="top" alt="Status page on a phone">
-</details>
+<img src=".screenshots/dark.png" alt="Status page in the dark theme">
 
 ## Setup
 
