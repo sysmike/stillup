@@ -474,26 +474,27 @@ function renderCard(monitor) {
   const card = el('div', 'card');
   card.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
 
+  // Name, strip and figure sit in one row. The strip takes the space left over
+  // while it is measured, then narrows to what it painted.
   const head = el('div', 'card-head');
-  const left = el('div');
+  const left = el('div', 'card-left');
   const name = el('div', 'card-name');
   name.append(el('span', 'dot'), el('span', null, monitor.name));
   left.append(name);
   if (monitor.description) left.append(el('p', 'card-desc', monitor.description));
 
-  const right = el('div', 'card-status');
-  right.append(el('div', 'card-uptime', formatUptime(monitor.uptime.month)));
-  right.append(el('div', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status));
-  head.append(left, right);
-
-  // Strip and scale share a block that is as wide as the strip, so the labels
-  // sit at its ends now that the strip is a fixed size rather than the card's.
   const strip = el('div', 'strip-block');
   const bars = el('div', 'bars');
   const scale = el('div', 'scale');
   scale.append(el('span', null, `${RANGE_DAYS} days ago`), el('span'), el('span', null, 'Today'));
   strip.append(bars, scale);
-  card.append(head, strip);
+
+  const right = el('div', 'card-status');
+  right.append(el('div', 'card-uptime', formatUptime(monitor.uptime.month)));
+  right.append(el('div', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status));
+
+  head.append(left, strip, right);
+  card.append(head);
   registerStrip(bars, monitor, 2, strip);
 
   const footer = el('div', 'card-footer');
@@ -563,7 +564,11 @@ function fillPendingStrips() {
     // A card measures the room it has before the strip is narrowed to it; a
     // compact row's strip is a flex item that already holds the leftover.
     const painted = fillBars(bars, monitor, (wrapper || bars).clientWidth, gap, RANGE_DAYS, BAR_WIDTH);
-    if (wrapper) wrapper.style.width = `${painted.width}px`;
+    if (wrapper) {
+      // Stop it growing back into the leftover it was measured against.
+      wrapper.style.flex = '0 0 auto';
+      wrapper.style.width = `${painted.width}px`;
+    }
   }
 }
 

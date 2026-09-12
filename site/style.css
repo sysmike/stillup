@@ -379,9 +379,26 @@ main.shell {
 
 .card-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
+  align-items: center;
+  gap: 16px;
+}
+
+/* A fixed name column keeps every card's strip starting at the same place,
+   whatever the status word beside it is. */
+.card-left {
+  flex: 0 0 30%;
+  min-width: 0;
+}
+
+/* Takes the leftover width while it is measured; the fill sets it to the
+   width it actually painted. */
+.card .strip-block {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.card .bars {
+  margin: 0 0 5px;
 }
 
 .card-name {
@@ -390,6 +407,13 @@ main.shell {
   gap: 8px;
   font-weight: 600;
   font-size: 15px;
+  min-width: 0;
+}
+
+.card-name span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-name a {
@@ -416,6 +440,7 @@ main.shell {
 }
 
 .card-status {
+  margin-left: auto;
   text-align: right;
   flex: none;
 }
@@ -618,6 +643,15 @@ main.shell {
   }
   .card-desc {
     display: none;
+  }
+  /* Too little width for name, strip and figure side by side: the name takes
+     a line of its own and the other two share the next. */
+  .card-head {
+    flex-wrap: wrap;
+    gap: 10px 16px;
+  }
+  .card-left {
+    flex: 1 0 100%;
   }
   .compact-row {
     gap: 9px;
