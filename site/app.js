@@ -63,6 +63,11 @@ function formatUptime(value) {
 }
 
 function showTooltip(event, lines) {
+  // A modal dialog paints in the browser's top layer, which no z-index in the
+  // normal layer can reach, so the tooltip has to join it there.
+  const host = event.target.closest('dialog') || document.body;
+  if (tooltip.parentElement !== host) host.append(tooltip);
+
   tooltip.replaceChildren(...lines);
   tooltip.hidden = false;
   const box = tooltip.getBoundingClientRect();
@@ -285,6 +290,7 @@ function syncDialog() {
 // Closing is driven explicitly rather than from the dialog's own close event,
 // which not every engine delivers when the dialog is closed from script.
 function closeDetail() {
+  hideTooltip();
   if (dialog.open) dialog.close();
   if (location.hash.startsWith('#/')) {
     history.replaceState(null, '', location.pathname + location.search);
@@ -531,6 +537,7 @@ document.getElementById('theme-toggle').addEventListener('click', () => {
 });
 
 addEventListener('scroll', hideTooltip, { passive: true });
+dialog.addEventListener('scroll', hideTooltip, { passive: true });
 
 let resizeTimer;
 addEventListener('resize', () => {
