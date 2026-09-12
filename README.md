@@ -158,9 +158,10 @@ workflows pass in from the Actions `vars` and `secrets` contexts.
 
 ## Notes
 
-- Scheduled workflows are queued, not guaranteed: runs drift by several minutes
-  under load, and GitHub disables schedules in repositories with no activity for
-  60 days.
+- Scheduled workflows are queued, not guaranteed: runs drift, whole slots get
+  dropped under load, and GitHub disables schedules in repositories with no
+  activity for 60 days. For an exact interval, trigger the workflow from a
+  machine you control: [docs/external-scheduler.md](docs/external-scheduler.md).
 - Actions minutes are free on public repositories. On a private repository
   every job is rounded up to a whole minute, so the cost follows the number of
   runs, not their duration: the default schedule is roughly 336 job-minutes a
