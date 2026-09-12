@@ -32,7 +32,6 @@ const summaryMonitors = monitors.map((monitor) => {
 
   const raw = readRaw(monitor.slug);
   const latest = raw.at(-1);
-  const measured = raw.filter((entry) => entry.ms > 0);
 
   writeFileSync(
     join(OUT, 'api', 'monitor', `${monitor.slug}.json`),
@@ -55,9 +54,6 @@ const summaryMonitors = monitors.map((monitor) => {
     lastCheck: latest?.timestamp || null,
     lastMs: latest?.ms || null, // 0 means nothing was measured, as for a dummy
     lastCode: latest?.code ?? null,
-    avgMs: measured.length
-      ? Math.round(measured.reduce((total, entry) => total + entry.ms, 0) / measured.length)
-      : null,
     uptime: uptimeWindows(daily, keys, DAYS),
     days,
   };
