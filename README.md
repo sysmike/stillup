@@ -133,10 +133,10 @@ response times. Set `link` if the card should point somewhere anyway. Adding
 
 Clicking a monitor, in either view, opens its details: current status, uptime
 over today, 7 and 30 days, the day by day history, the response time of the
-last 7 days, and the incidents that refer to it. The history there is always
-the full 90 days, whatever the range buttons on the page are set to. The monitored URL is a link
-in there rather than on the card, so clicking a monitor shows its history
-instead of navigating away.
+last 7 days, and the incidents that refer to it. The page itself shows the
+last 30 days; the history in the details is the full 90. The monitored URL is
+a link in there rather than on the card, so clicking a monitor shows its
+history instead of navigating away.
 
 Each monitor has its own address, `…/#/<slug>`, which opens the page with that
 monitor already in front. Incidents are matched by the marker in the issues
@@ -155,9 +155,9 @@ code and http links survive, and markup does not.
 
 A monitor with a `group` is listed under that heading. A collapsed group is
 shown compactly: one line per monitor with its status, its history strip and
-its uptime, instead of a full card. The strip in a row holds as many days as
-the row has room for, fewer than a card shows, and hovering a day still names
-it. Clicking a row opens the monitor's details, the same as clicking a card.
+its uptime, instead of a full card. Both strips cover the same 30 days, and
+hovering a day names it. Clicking a row opens the monitor's details, the same
+as clicking a card.
 
 Which groups are collapsed is configuration and not something a visitor
 changes.
@@ -226,7 +226,7 @@ The build is a snapshot, so the deployed page also fetches `history/live.json`
 from `raw.githubusercontent.com` on load, every minute, and whenever the tab
 returns to the foreground. Status, response times and incidents therefore
 refresh without a deployment, and a tab left open during an outage keeps up.
-The 90 day bars come from the build and only change when the site is rebuilt.
+The bars come from the build and only change when the site is rebuilt.
 GitHub caches raw files for five minutes, which is the practical limit on how
 fresh this is. If the fetch fails the page keeps its build time data.
 

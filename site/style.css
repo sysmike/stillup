@@ -275,32 +275,6 @@ main.shell {
   margin: 30px 0 12px;
 }
 
-.range {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
-}
-
-.range button {
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12.5px;
-  padding: 3px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.range button.is-active {
-  background: var(--surface-alt);
-  color: var(--text);
-  font-weight: 500;
-}
-
 .monitors {
   display: flex;
   flex-direction: column;

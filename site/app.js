@@ -17,7 +17,9 @@ const BANNER_TEXT = {
 const svgNS = 'http://www.w3.org/2000/svg';
 const tooltip = document.getElementById('tooltip');
 const monitorsEl = document.getElementById('monitors');
-let range = 90;
+// The page shows a fixed window; the detail view shows the whole history.
+const RANGE_DAYS = 30;
+const BAR_WIDTH = 5;
 let data;
 
 const el = (tag, className, text) => {
@@ -89,33 +91,29 @@ const hideTooltip = () => {
   tooltip.hidden = true;
 };
 
-const rangeKey = () => (range === 7 ? 'week' : range === 30 ? 'month' : 'quarter');
-
-// Bars stay readable by dropping the oldest days when the viewport is narrow.
-// Whole pixel geometry: a bar and a gap of integer width, with the day count
-// derived from them. The cell grows when the range caps the count, so a strip
-// still reaches the end of the space it was given instead of stopping short.
-function stripLayout(width, minBar, gap, lock = 0) {
-  // `lock` fixes the number of days, whatever the range buttons say; otherwise
-  // the range decides, limited by what the width can hold. The cell is whole
-  // pixels, and the gap narrows with it, or a cramped strip is mostly gap.
-  const count = lock || Math.max(7, Math.min(range, Math.floor((width + gap) / (minBar + gap))));
-  const cell = Math.max(lock ? 2 : minBar + gap, Math.floor((width + gap) / count));
+// Bars are laid out on whole pixels: a bar of `targetBar` where there is room
+// for one, narrower where there is not, and a gap that narrows with it so a
+// cramped strip does not end up mostly gap.
+function stripLayout(width, gap, count, targetBar) {
+  const fit = Math.max(2, Math.floor((width + gap) / count));
+  const cell = targetBar ? Math.min(targetBar + gap, fit) : fit;
   return { cell, gap: cell >= 4 ? gap : 1, count };
 }
 
 // Fills an existing strip, so a row can be measured first and filled after.
-function fillBars(bars, monitor, width, minBar = 3, gap = 2, lock = 0) {
-  const layout = stripLayout(width, minBar, gap, lock);
+function fillBars(bars, monitor, width, gap, count, targetBar = 0) {
+  const layout = stripLayout(width, gap, count, targetBar);
   const base = layout.cell - layout.gap;
   bars.style.setProperty('--bar', `${base}px`);
   bars.style.setProperty('--gap', `${layout.gap}px`);
   bars.replaceChildren();
 
-  // Whole pixel bars rarely divide the width exactly. The remainder is spread
-  // one pixel at a time across the strip, so it fills its space with even gaps
-  // instead of stopping short or being clipped.
-  const spare = Math.max(0, Math.floor(width) - (layout.count * layout.cell - layout.gap));
+  // A strip without a target bar width fills its space instead. Whole pixel
+  // bars rarely divide it exactly, so the remainder is spread one pixel at a
+  // time across the strip rather than leaving it short.
+  const spare = targetBar
+    ? 0
+    : Math.max(0, Math.floor(width) - (layout.count * layout.cell - layout.gap));
   const days = monitor.days.slice(-layout.count);
   days.forEach((day, index) => {
     const bar = el('div', `bar bar-${day.state}`);
@@ -138,14 +136,14 @@ function fillBars(bars, monitor, width, minBar = 3, gap = 2, lock = 0) {
     bar.addEventListener('mouseleave', hideTooltip);
     bars.append(bar);
   });
-  return days.length;
+  return { days: days.length, width: layout.count * layout.cell - layout.gap + spare };
 }
 
-function renderBars(monitor, width = monitorsEl.clientWidth - 40, minBar = 3, gap = 2, lock = 0) {
+function renderBars(monitor, width, gap, count) {
   const bars = el('div', 'bars');
-  const shown = fillBars(bars, monitor, width, minBar, gap, lock);
+  const painted = fillBars(bars, monitor, width, gap, count);
   const scale = el('div', 'scale');
-  scale.append(el('span', null, `${shown} days ago`), el('span'), el('span', null, 'Today'));
+  scale.append(el('span', null, `${painted.days} days ago`), el('span'), el('span', null, 'Today'));
   return [bars, scale];
 }
 
@@ -420,7 +418,7 @@ async function openDetail(slug) {
   // The detail view shows the whole history regardless of the range buttons.
   // Strip and scale share a block so the labels stay aligned with the strip.
   const strip = el('div', 'strip-block');
-  strip.append(...renderBars(monitor, detailBody.clientWidth, 3, 2, data.days));
+  strip.append(...renderBars(monitor, detailBody.clientWidth, 2, data.days));
   history.append(strip);
 
   try {
@@ -478,16 +476,19 @@ function renderCard(monitor) {
   if (monitor.description) left.append(el('p', 'card-desc', monitor.description));
 
   const right = el('div', 'card-status');
-  right.append(el('div', 'card-uptime', formatUptime(monitor.uptime[rangeKey()])));
+  right.append(el('div', 'card-uptime', formatUptime(monitor.uptime.month)));
   right.append(el('div', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status));
   head.append(left, right);
 
+  // Strip and scale share a block that is as wide as the strip, so the labels
+  // sit at its ends now that the strip is a fixed size rather than the card's.
+  const strip = el('div', 'strip-block');
   const bars = el('div', 'bars');
   const scale = el('div', 'scale');
-  const label = el('span');
-  scale.append(label, el('span'), el('span', null, 'Today'));
-  card.append(head, bars, scale);
-  registerStrip(bars, monitor, 2, label);
+  scale.append(el('span', null, `${RANGE_DAYS} days ago`), el('span'), el('span', null, 'Today'));
+  strip.append(bars, scale);
+  card.append(head, strip);
+  registerStrip(bars, monitor, 2, strip);
 
   const footer = el('div', 'card-footer');
   const more = el('span', 'card-more');
@@ -547,14 +548,16 @@ function summarize(monitors) {
 // clipped in a compact row and overflowing a card.
 const pendingStrips = [];
 
-function registerStrip(bars, monitor, gap, label = null) {
-  pendingStrips.push({ bars, monitor, gap, label });
+function registerStrip(bars, monitor, gap, wrapper = null) {
+  pendingStrips.push({ bars, monitor, gap, wrapper });
 }
 
 function fillPendingStrips() {
-  for (const { bars, monitor, gap, label } of pendingStrips.splice(0)) {
-    const shown = fillBars(bars, monitor, bars.clientWidth, 3, gap);
-    if (label) label.textContent = `${shown} days ago`;
+  for (const { bars, monitor, gap, wrapper } of pendingStrips.splice(0)) {
+    // A card measures the room it has before the strip is narrowed to it; a
+    // compact row's strip is a flex item that already holds the leftover.
+    const painted = fillBars(bars, monitor, (wrapper || bars).clientWidth, gap, RANGE_DAYS, BAR_WIDTH);
+    if (wrapper) wrapper.style.width = `${painted.width}px`;
   }
 }
 
@@ -571,7 +574,7 @@ function renderCompactRow(monitor) {
   registerStrip(bars, monitor, 1);
 
   row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
-  row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime[rangeKey()])));
+  row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime.month)));
   makeOpener(row, monitor);
   return row;
 }
@@ -675,16 +678,6 @@ function render() {
 
   renderIncidents(data.incidents);
   renderMonitors();
-}
-
-for (const button of document.querySelectorAll('.range button')) {
-  button.addEventListener('click', () => {
-    range = Number(button.dataset.range);
-    for (const other of document.querySelectorAll('.range button')) {
-      other.classList.toggle('is-active', other === button);
-    }
-    renderMonitors();
-  });
 }
 
 const root = document.documentElement;
