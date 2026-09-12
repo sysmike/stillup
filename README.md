@@ -44,6 +44,18 @@ someone else from claiming it if this repository is renamed or deleted. If DNS
 is proxied through Cloudflare, keep the record DNS-only until GitHub has issued
 the certificate.
 
+## Site variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SITE_TITLE` | `Status` | Page and browser title |
+| `SITE_DESCRIPTION` | none | Line under the status banner |
+| `SITE_LINK` | none | Link in the footer |
+| `SITE_LOGO` | none | Logo URL shown next to the title |
+| `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
+| `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
+| `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues |
+
 ## Monitors
 
 Every monitor is a repository variable named `MONITOR_<NAME>`. The name after
@@ -110,18 +122,6 @@ What is still published for a private monitor: the slug derived from the secret
 name, the display name, the group and description, and the status, uptime and
 response times. Set `link` if the card should point somewhere anyway. Adding
 `"private": true` to a monitor defined as a variable has the same effect.
-
-## Site variables
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `SITE_TITLE` | `Status` | Page and browser title |
-| `SITE_DESCRIPTION` | none | Line under the status banner |
-| `SITE_LINK` | none | Link in the footer |
-| `SITE_LOGO` | none | Logo URL shown next to the title |
-| `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
-| `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
-| `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues |
 
 ## How it works
 
