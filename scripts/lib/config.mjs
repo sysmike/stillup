@@ -136,16 +136,24 @@ export function loadConfig(varsJson, secretsJson) {
 
   monitors.sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.name.localeCompare(b.name));
 
-  // GROUP_<NAME> overrides the site rule for one group.
+  // GROUP_<NAME> sets the position of one group and overrides the site rule for
+  // it. A bare number is an order, any other bare value is a compact setting.
   const groups = {};
   for (const [name, raw] of Object.entries({ ...vars, ...secrets })) {
     if (!name.startsWith(GROUP_PREFIX)) continue;
     const value = raw.trim();
     if (!value) continue;
-    const parsed = value.startsWith('{') ? JSON.parse(value) : { compact: value };
+    const parsed = value.startsWith('{')
+      ? JSON.parse(value)
+      : /^\d+$/.test(value)
+        ? { order: Number(value) }
+        : { compact: value };
     const slug = slugify(name.slice(GROUP_PREFIX.length));
     const match = monitors.find((monitor) => monitor.group && slugify(monitor.group) === slug);
-    groups[match?.group || titleize(slug)] = { compact: normalizeCompact(parsed.compact) };
+    groups[match?.group || titleize(slug)] = {
+      compact: normalizeCompact(parsed.compact),
+      order: Number.isFinite(Number(parsed.order)) && parsed.order !== undefined ? Number(parsed.order) : null,
+    };
   }
 
   const compact = String(vars.SITE_GROUP_COMPACT || 'auto').trim().toLowerCase();

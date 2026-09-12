@@ -547,7 +547,12 @@ function renderMonitors() {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(monitor);
   }
-  for (const [group, monitors] of groups) {
+  // Groups follow their configured order; ties keep the order their monitors
+  // put them in, which is what happens when nothing is configured at all.
+  const ordered = [...groups.entries()].sort(
+    ([a], [b]) => (data.groups?.[a]?.order ?? 100) - (data.groups?.[b]?.order ?? 100),
+  );
+  for (const [group, monitors] of ordered) {
     if (!group) {
       for (const monitor of monitors) monitorsEl.append(renderCard(monitor));
       continue;

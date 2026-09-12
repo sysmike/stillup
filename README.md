@@ -173,16 +173,24 @@ changes.
 A group that contains something down or degraded is never collapsed by the
 `auto` rule: an outage stays visible without a click.
 
-A single group can override that rule with a `GROUP_<NAME>` variable, where
-the name matches the group the monitors refer to:
+A `GROUP_<NAME>` variable positions one group and overrides that rule for it.
+The name matches the group its monitors refer to:
 
 ```
 GROUP_INTERNAL   compact
 GROUP_PUBLIC     expanded
+GROUP_EDGE       2
+GROUP_CORE       {"order": 1, "compact": "expanded"}
 ```
 
-`compact`, `always`, `true` and `yes` mean the same thing, as do `expanded`,
-`never`, `false` and `no`. `auto` falls back to the site rule.
+A bare number is the group's position, any other bare value is a compact
+setting, and JSON sets both. `compact`, `always`, `true` and `yes` mean the
+same thing, as do `expanded`, `never`, `false` and `no`; `auto` falls back to
+the site rule.
+
+Groups are ordered the way monitors are: by `order` ascending, defaulting to
+`100`. Groups left without one keep the position their monitors give them,
+which is what happens when no group is configured at all.
 
 ## How it works
 
