@@ -356,11 +356,16 @@ main.shell {
   white-space: nowrap;
 }
 
-/* Specificity has to beat the plain .bars rule further down. */
+/* Specificity has to beat the plain .bars rule further down. The strip may
+   shrink and clip its oldest days rather than push into the status and the
+   figure beside it. */
 .bars.bars-compact {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   height: 20px;
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  justify-content: flex-end;
 }
 
 .compact-name a {
@@ -373,11 +378,13 @@ main.shell {
 }
 
 .compact-sub {
+  flex: none;
   font-size: 12.5px;
   color: var(--muted);
 }
 
 .compact-uptime {
+  flex: none;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   font-size: 13.5px;
