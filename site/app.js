@@ -15,6 +15,15 @@ const BANNER_TEXT = {
   none: 'Waiting for the first check',
 };
 
+// The tab icon carries the overall status, so a pinned tab still reports it.
+const STATUS_COLOR = {
+  up: '#12b76a',
+  degraded: '#f79009',
+  partial: '#f97316',
+  down: '#f04438',
+  none: '#9aa3ad',
+};
+
 const svgNS = 'http://www.w3.org/2000/svg';
 const tooltip = document.getElementById('tooltip');
 const monitorsEl = document.getElementById('monitors');
@@ -633,6 +642,15 @@ async function refresh() {
   }
 }
 
+function setFavicon(status) {
+  const color = STATUS_COLOR[status] || STATUS_COLOR.none;
+  const mark =
+    `<svg xmlns="${svgNS}" viewBox="0 0 32 32">` +
+    `<circle cx="16" cy="16" r="11.3" fill="none" stroke="${color}" stroke-width="2.8"/>` +
+    `<circle cx="16" cy="16" r="5.2" fill="${color}"/></svg>`;
+  document.getElementById('favicon').href = `data:image/svg+xml,${encodeURIComponent(mark)}`;
+}
+
 function render() {
   document.title = data.site.title;
   document.getElementById('brand-title').textContent = data.site.title;
@@ -649,6 +667,7 @@ function render() {
 
   const banner = document.getElementById('banner');
   banner.className = `banner banner-${data.overall}`;
+  setFavicon(data.overall);
   document.getElementById('banner-title').textContent = BANNER_TEXT[data.overall];
   const down = data.monitors.filter((monitor) => monitor.status === 'down');
   document.getElementById('banner-meta').textContent =
@@ -695,6 +714,7 @@ try {
     if (document.visibilityState === 'visible') refresh();
   });
 } catch (error) {
+  setFavicon('none');
   document.getElementById('banner-title').textContent = 'Status data unavailable';
   document.getElementById('banner-meta').textContent = String(error.message || error);
 }
