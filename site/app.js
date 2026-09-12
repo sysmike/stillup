@@ -92,13 +92,18 @@ const hideTooltip = () => {
 const rangeKey = () => (range === 7 ? 'week' : range === 30 ? 'month' : 'quarter');
 
 // Bars stay readable by dropping the oldest days when the viewport is narrow.
-function visibleDays(width = monitorsEl.clientWidth - 40) {
-  return Math.max(7, Math.min(range, Math.floor(width / 5)));
+function visibleDays(width, cell) {
+  return Math.max(7, Math.min(range, Math.floor(width / cell)));
 }
 
-function renderBars(monitor, width) {
+// Bars are laid out on whole pixels. Letting flex share the space instead gives
+// them fractional widths, and rounding those to device pixels is what made the
+// spacing look uneven every few days.
+function renderBars(monitor, width = monitorsEl.clientWidth - 40, bar = 3, gap = 2) {
   const bars = el('div', 'bars');
-  const days = monitor.days.slice(-visibleDays(width));
+  bars.style.setProperty('--bar', `${bar}px`);
+  bars.style.setProperty('--gap', `${gap}px`);
+  const days = monitor.days.slice(-visibleDays(width, bar + gap));
   for (const day of days) {
     const bar = el('div', `bar bar-${day.state}`);
     bar.addEventListener('mouseenter', (event) => {
@@ -511,9 +516,8 @@ function renderCompactRow(monitor) {
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
   row.append(el('span', 'dot'), el('span', 'compact-name', monitor.name));
 
-  // The row is narrower than a card, so the strip is sized for what is left
-  // once the name, status and figure have taken their share.
-  const [bars] = renderBars(monitor, Math.max(120, monitorsEl.clientWidth * 0.45));
+  // Half the width a card gives its strip, with a tighter cell to match.
+  const [bars] = renderBars(monitor, Math.max(80, monitorsEl.clientWidth * 0.22), 3, 1);
   bars.classList.add('bars-compact');
   row.append(bars);
 

@@ -348,7 +348,7 @@ main.shell {
 }
 
 .compact-name {
-  flex: 0 1 26%;
+  flex: 1 1 auto;
   min-width: 88px;
   font-weight: 500;
   overflow: hidden;
@@ -358,11 +358,9 @@ main.shell {
 
 /* Specificity has to beat the plain .bars rule further down. */
 .bars.bars-compact {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   height: 20px;
   margin: 0;
-  min-width: 100px;
-  gap: 1.5px;
 }
 
 .compact-name a {
@@ -455,14 +453,14 @@ main.shell {
 .bars {
   display: flex;
   align-items: stretch;
-  gap: 2px;
+  gap: var(--gap, 2px);
   height: 34px;
   margin: 14px 0 8px;
 }
 
+/* Whole pixel bars: fractional widths paint unevenly. */
 .bar {
-  flex: 1 1 0;
-  min-width: 2px;
+  flex: 0 0 var(--bar, 3px);
   border-radius: 2px;
   background: var(--none);
   transition: opacity 0.1s;
