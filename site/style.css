@@ -336,8 +336,6 @@ main.shell {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  /* The removed heading used to carry this gap below the banner. */
-  margin-top: 30px;
 }
 
 .group-head {
