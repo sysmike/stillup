@@ -418,8 +418,7 @@ async function openDetail(slug) {
   if (!dialog.open) dialog.showModal();
   // Bars need the dialog's width, which only exists once it is open.
   // The detail view shows the whole history regardless of the range buttons.
-  // Strip and scale share a block that shrinks to the strip, so the labels sit
-  // at its ends even when that many whole pixel bars cannot fill the dialog.
+  // Strip and scale share a block so the labels stay aligned with the strip.
   const strip = el('div', 'strip-block');
   strip.append(...renderBars(monitor, detailBody.clientWidth, 3, 2, data.days));
   history.append(strip);
