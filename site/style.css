@@ -438,13 +438,16 @@ main.shell {
 }
 
 /* Shared by both layouts: identical widths here are what make the strips in a
-   card and in a compact row line up with each other. */
+   card and in a compact row line up with each other. The word is centred in
+   its column so the space left over falls either side of it evenly, which
+   keeps the gap to the strip and the gap to the figure the same. */
 .card-sub,
 .compact-sub {
   flex: 0 0 86px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
   font-size: 12.5px;
   color: var(--muted);
 }
