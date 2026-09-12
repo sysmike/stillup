@@ -188,16 +188,7 @@ main.shell {
   --status: var(--down);
 }
 
-.panel {
-  margin-top: 26px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  padding: 16px 20px;
-}
-
-.panel-title {
+.section-title {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
@@ -208,7 +199,7 @@ main.shell {
 
 .incident-list {
   list-style: none;
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
 }
 
@@ -219,7 +210,20 @@ main.shell {
 
 .incident-list li:first-child {
   border-top: 0;
-  padding-top: 4px;
+}
+
+/* Only the list on the page is a box of its own, with the heading above it as
+   the monitors have. The one inside a dialog stays flat. */
+#incident-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+#incident-list li {
+  padding: 12px 18px;
 }
 
 .incident-title {
@@ -634,7 +638,7 @@ main.shell {
   margin-top: 22px;
 }
 
-.detail-section .panel-title {
+.detail-section .section-title {
   margin-bottom: 10px;
 }
 

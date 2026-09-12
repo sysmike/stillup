@@ -396,11 +396,11 @@ async function openDetail(slug) {
   detailBody.append(figures);
 
   const history = el('div', 'detail-section');
-  history.append(el('h3', 'panel-title', `${data.days} day history`));
+  history.append(el('h3', 'section-title', `${data.days} day history`));
   detailBody.append(history);
 
   const chartSection = el('div', 'detail-section');
-  chartSection.append(el('h3', 'panel-title', 'Response time'));
+  chartSection.append(el('h3', 'section-title', 'Response time'));
   const chart = el('div', 'chart');
   chart.append(el('p', 'detail-empty', 'Loading…'));
   chartSection.append(chart);
@@ -410,7 +410,7 @@ async function openDetail(slug) {
     (incident) => incident.monitors?.includes(slug) || incident.monitor === slug,
   );
   const incidentSection = el('div', 'detail-section');
-  incidentSection.append(el('h3', 'panel-title', 'Incidents'));
+  incidentSection.append(el('h3', 'section-title', 'Incidents'));
   if (related.length) {
     const list = el('ul', 'incident-list');
     for (const incident of related) list.append(renderIncidentItem(incident));
