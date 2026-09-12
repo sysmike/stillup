@@ -201,4 +201,5 @@ workflows pass in from the Actions `vars` and `secrets` contexts.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+- MIT — see [LICENSE](LICENSE).
+- Data in the `./history` directory: [Open Database License](https://opendatacommons.org/licenses/odbl/1-0/)
