@@ -3,7 +3,8 @@
 //
 // Every monitor is its own repository variable named MONITOR_<SLUG>. The value
 // is either a bare URL or a JSON object with per-monitor options. An http(s)
-// URL is requested; a tcp://host:port URL is checked by opening a connection. A monitor
+// URL is requested, a tcp://host:port URL is checked by opening a connection,
+// and a ping://host URL is checked with an ICMP echo. A monitor
 // defined as a secret instead of a variable is private by default: its URL is
 // kept out of the published site and out of incident issues.
 
@@ -94,9 +95,18 @@ export function loadConfig(varsJson, secretsJson) {
     if (!parsed.url) throw new Error(`Variable ${name} has no url`);
 
     const slug = slugify(parsed.slug || name.slice(MONITOR_PREFIX.length));
-    const type = parsed.url.startsWith('tcp://') ? 'tcp' : 'http';
+    const type = parsed.url.startsWith('tcp://')
+      ? 'tcp'
+      : parsed.url.startsWith('ping://')
+        ? 'ping'
+        : 'http';
     if (type === 'tcp' && !new URL(parsed.url).port) {
       throw new Error(`Monitor ${name} needs a port, for example tcp://example.com:443`);
+    }
+    // The host reaches the ping binary as an argument, so anything that could
+    // pass for an option is rejected rather than escaped.
+    if (type === 'ping' && !/^[a-z0-9][a-z0-9.:_-]*$/i.test(new URL(parsed.url).hostname.replace(/^\[|\]$/g, ''))) {
+      throw new Error(`Monitor ${name} has an unusable host, expected ping://example.com`);
     }
 
     monitors.push({

@@ -54,6 +54,7 @@ plain URL or a JSON object.
 MONITOR_WEBSITE   https://example.com
 MONITOR_API       {"name":"Public API","url":"https://api.example.com/health","keyword":"ok","group":"Core"}
 MONITOR_SMTP      {"name":"Mail","url":"tcp://mail.example.com:25","keyword":"220"}
+MONITOR_GATEWAY   {"name":"Gateway","url":"ping://gw.example.com"}
 ```
 
 An `http` or `https` URL is requested over HTTP. A `tcp://host:port` URL is
@@ -65,9 +66,21 @@ against that string, which covers banner protocols such as SMTP, SSH or IMAP.
 apply to a TCP monitor, and its address is not used as the card link — set
 `link` if the card should point somewhere.
 
+A `ping://host` URL sends one ICMP echo through the system `ping` binary and
+measures the round trip. It needs `ping` on the runner, ignores `keyword`
+along with the HTTP options, and is also not used as a card link.
+
+**ICMP does not work on GitHub-hosted runners.** They are Azure virtual
+machines, and Azure blocks ICMP, so a ping monitor reports `socket: Operation
+not permitted` or `no reply` no matter how healthy the host is. Use ping only
+with a self-hosted runner; on hosted runners check a port with `tcp://`
+instead. To see where you stand, add `MONITOR_PINGTEST` as `ping://1.1.1.1`,
+run the Uptime workflow once and read the "Run checks" step: `up` means ICMP
+works for you, anything else means it does not.
+
 | Key | Default | Description |
 | --- | --- | --- |
-| `url` | required | `https://…` to request, or `tcp://host:port` to connect to |
+| `url` | required | `https://…` to request, `tcp://host:port` to connect to, or `ping://host` to ping |
 | `name` | derived from the variable name | Display name |
 | `method` | `GET` | HTTP method |
 | `headers` | `{}` | Request headers |

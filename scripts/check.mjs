@@ -2,7 +2,9 @@
 // scripts/.results.json for the incident step.
 
 import { writeFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
 import { connect } from 'node:net';
+import { promisify } from 'node:util';
 import { loadConfig, redact, statusMatches } from './lib/config.mjs';
 import { appendResult } from './lib/history.mjs';
 
@@ -32,6 +34,37 @@ function tcpRequest(monitor) {
   });
 }
 
+const run = promisify(execFile);
+
+// One ICMP echo through the system ping binary; Node cannot open a raw socket
+// on its own. Hosted runners usually cannot either, see the README.
+async function pingRequest(monitor) {
+  const host = new URL(monitor.url).hostname.replace(/^\[|\]$/g, '');
+  const deadline = Math.max(1, Math.ceil(monitor.timeout / 1000));
+  try {
+    // LC_ALL keeps ping's diagnostics in English, whatever the host locale is.
+    const { stdout } = await run('ping', ['-n', '-c', '1', '-W', String(deadline), host], {
+      timeout: monitor.timeout + 1000,
+      encoding: 'utf8',
+      env: { ...process.env, LC_ALL: 'C', LANG: 'C' },
+    });
+    const rtt = stdout.match(/time[=<]\s*([\d.]+)\s*ms/i);
+    if (!rtt) throw new Error('no reply');
+    return { code: 0, ms: Math.round(Number(rtt[1])), text: '' };
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error('ping is not installed on this runner');
+    const lines = `${error.stderr || ''}\n${error.stdout || ''}`
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    // ping reports its own failures on a "ping: ..." line; everything else is
+    // an ordinary miss, which shows up as complete packet loss.
+    const reported = lines.find((line) => line.startsWith('ping:'));
+    if (reported) throw new Error(reported.replace(/^ping:\s*/, ''));
+    throw new Error(lines.some((line) => line.includes('100% packet loss')) ? 'no reply' : error.message);
+  }
+}
+
 async function httpRequest(monitor) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), monitor.timeout);
@@ -51,7 +84,8 @@ async function httpRequest(monitor) {
   }
 }
 
-const request = (monitor) => (monitor.type === 'tcp' ? tcpRequest(monitor) : httpRequest(monitor));
+const requests = { tcp: tcpRequest, ping: pingRequest, http: httpRequest };
+const request = (monitor) => requests[monitor.type](monitor);
 
 async function check(monitor) {
   let last;
