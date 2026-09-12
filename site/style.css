@@ -376,8 +376,7 @@ main.shell {
    motion.
 
    The ring is drawn as a gradient with soft edges, which scales without the
-   shimmer a hard edge shows at this size, and the timing is sinusoidal so it
-   turns around at the ends instead of stopping dead. */
+   shimmer a hard edge shows at this size. */
 @keyframes status-pulse {
   0%,
   100% {
@@ -406,7 +405,7 @@ main.shell {
       transparent 92%
     );
     will-change: transform, opacity;
-    animation: status-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: status-pulse 4s ease-in-out infinite;
   }
 }
 
