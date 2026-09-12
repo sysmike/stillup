@@ -11,7 +11,7 @@ repository has to change.
 Fine-grained token at
 <https://github.com/settings/personal-access-tokens/new>:
 
-- **Resource owner**: `sysmike`
+- **Resource owner**: *Your username*
 - **Repository access**: *Only select repositories* → `status-page`
 - **Repository permissions** → **Actions**: *Read and write*
 - **Expiration**: pick a date you will actually act on; the checks stop
