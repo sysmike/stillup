@@ -682,6 +682,7 @@ main.shell {
   display: flex;
   align-items: center;
   gap: 9px;
+  margin: 0;
   font-size: 19px;
   font-weight: 600;
   padding-right: 40px;

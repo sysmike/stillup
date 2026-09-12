@@ -369,7 +369,8 @@ function openIncident(number) {
 
   detailBody.replaceChildren();
   const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
-  const head = el('div', 'detail-head');
+  const head = el('h2', 'detail-head');
+  head.id = 'detail-title';
   head.append(el('span', null, incident.title));
   detailBody.append(head);
 
@@ -427,7 +428,9 @@ async function openDetail(slug) {
   if (!monitor) return;
 
   detailBody.replaceChildren();
-  const head = el('div', 'detail-head');
+  // The dialog is named by this heading, so it announces what opened.
+  const head = el('h2', 'detail-head');
+  head.id = 'detail-title';
   head.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
   head.append(el('span', monitor.status === 'none' ? 'dot is-idle' : 'dot'), el('span', null, monitor.name));
   detailBody.append(head);
