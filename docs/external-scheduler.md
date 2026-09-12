@@ -1,9 +1,6 @@
 # Triggering checks from your own server
 
-GitHub's `schedule` event is best effort. On this repository the first
-scheduled run appeared 4 hours 42 minutes after the workflow reached the
-default branch, and a later gap of 2 hours 45 minutes dropped roughly 33
-consecutive `*/5` slots. Dispatching the workflow from a machine you control
+GitHub's `schedule` event is best effort. Dispatching the workflow from a machine you control
 gives an exact interval instead.
 
 The **Uptime** workflow already accepts `workflow_dispatch`, so nothing in the
