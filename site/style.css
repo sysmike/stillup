@@ -357,14 +357,14 @@ main.shell {
   color: var(--muted);
 }
 
+/* No fixed width: a reserved box right-aligns its text, which leaves a wider
+   visible gap before a short figure than the row's own gap. */
 .compact-uptime {
   flex: none;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   font-size: 13.5px;
   color: var(--status, var(--text));
-  min-width: 58px;
-  text-align: right;
 }
 
 .card {
