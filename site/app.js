@@ -232,13 +232,14 @@ function renderIncidents(incidents) {
     const meta = el('div', 'incident-meta');
     const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
     meta.append(el('span', `tag tag-${state}`, state));
+    // Maintenance is announced ahead of time, so it is never "started".
     meta.append(
       el(
         'span',
         null,
         incident.state === 'open'
-          ? `started ${relative(incident.createdAt)}`
-          : `${formatDate(incident.createdAt)} · resolved ${relative(incident.closedAt)}`,
+          ? `${incident.maintenance ? 'opened' : 'started'} ${relative(incident.createdAt)}`
+          : `${formatDate(incident.createdAt)} · ${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)}`,
       ),
     );
     item.append(meta);

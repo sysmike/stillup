@@ -136,7 +136,11 @@ history/incidents.json     snapshot of recent incident issues
 ```
 
 Issues labelled with the incident label show up on the page, so you can also
-open one by hand for planned work; add a `maintenance` label to mark it as such.
+open one by hand for planned work: the **Planned maintenance** issue template
+applies the `status` and `maintenance` labels and the entry is rendered as
+maintenance rather than as an outage. If `INCIDENT_LABELS` is customised, the
+first label in it has to be the one in
+`.github/ISSUE_TEMPLATE/maintenance.yml`.
 
 ## Local preview
 

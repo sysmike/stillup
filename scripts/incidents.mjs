@@ -38,6 +38,8 @@ const [primaryLabel] = settings.labels;
 for (const label of settings.labels) {
   await ensureLabel(label, 'd73a4a', 'Status page incident');
 }
+// The maintenance issue template applies this label, so it has to exist.
+await ensureLabel('maintenance', '0969da', 'Planned maintenance shown on the status page');
 
 const open = await api(
   `/repos/${repo}/issues?state=open&labels=${encodeURIComponent(primaryLabel)}&per_page=100`,

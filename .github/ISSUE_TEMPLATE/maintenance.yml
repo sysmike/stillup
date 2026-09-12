@@ -1,0 +1,40 @@
+name: Planned maintenance
+description: Announce a maintenance window on the status page
+title: 'Maintenance: '
+labels: ['status', 'maintenance']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is shown on the status page while it is open, and stays
+        listed until 30 days after it was created. Close it when the work is
+        done. The page picks it up on the next rebuild, within 30 minutes.
+
+        Keep the title short and put the window in it, for example
+        `Maintenance: database upgrade, 14 Mar 02:00 UTC`.
+  - type: input
+    id: window
+    attributes:
+      label: Window
+      description: Start and end, in UTC.
+      placeholder: 2026-03-14 02:00 - 04:00 UTC
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Expected impact
+      placeholder: The API returns 503 for up to ten minutes while the database fails over.
+    validations:
+      required: true
+  - type: input
+    id: monitors
+    attributes:
+      label: Affected monitors
+      description: Names as they appear on the status page.
+      placeholder: Public API, Documentation
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Rollback plan, contact, ticket references.
