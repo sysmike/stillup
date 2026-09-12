@@ -271,8 +271,9 @@ function inline(target, text) {
   target.append(text.slice(last));
 }
 
-function renderBody(container, body) {
+function renderBody(container, body, skip = []) {
   let list = null;
+  let skipping = false;
   for (const raw of body.split('\n')) {
     const line = raw.trim();
     if (!line) {
@@ -280,10 +281,13 @@ function renderBody(container, body) {
       continue;
     }
     if (/^#{1,6}\s/.test(line)) {
+      const heading = line.replace(/^#{1,6}\s*/, '');
       list = null;
-      container.append(el('h4', 'body-heading', line.replace(/^#{1,6}\s*/, '')));
+      skipping = skip.includes(heading.toLowerCase());
+      if (!skipping) container.append(el('h4', 'body-heading', heading));
       continue;
     }
+    if (skipping) continue;
     if (/^[-*]\s/.test(line)) {
       if (!list) container.append((list = el('ul', 'body-list')));
       const item = el('li');
@@ -339,8 +343,10 @@ function openIncident(number) {
     detailBody.append(chips);
   }
 
+  // The chips above already name the monitors, so the section the maintenance
+  // template writes would only repeat them. It stays when nothing resolved.
   const section = el('div', 'detail-section');
-  if (incident.body) renderBody(section, incident.body);
+  if (incident.body) renderBody(section, incident.body, affected.length ? ['affected monitors'] : []);
   else section.append(el('p', 'detail-empty', 'No description was given.'));
   detailBody.append(section);
 
