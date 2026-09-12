@@ -483,10 +483,11 @@ function renderIncidents(incidents) {
   section.hidden = false;
 }
 
-// Collapsed groups show one line per monitor instead of a card. A group the
-// visitor has toggled keeps that choice; otherwise the group setting decides,
-// and 'auto' collapses long groups as long as everything in them is up.
-function startsCompact(group, monitors) {
+// Collapsed groups show one line per monitor instead of a card. Which groups
+// are collapsed is configuration rather than something a visitor picks: the
+// group setting decides, and 'auto' collapses long groups as long as
+// everything in them is up.
+function isCompact(group, monitors) {
   const setting = data.groups?.[group]?.compact ?? 'auto';
   if (setting !== 'auto') return setting;
   const { mode, threshold } = data.site.groupCompact ?? { mode: 'auto', threshold: 4 };
@@ -508,9 +509,14 @@ function summarize(monitors) {
 function renderCompactRow(monitor) {
   const row = el('div', 'compact-row');
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
-  row.append(el('span', 'dot'));
+  row.append(el('span', 'dot'), el('span', 'compact-name', monitor.name));
 
-  row.append(el('span', 'compact-name', monitor.name));
+  // The row is narrower than a card, so the strip is sized for what is left
+  // once the name, status and figure have taken their share.
+  const [bars] = renderBars(monitor, Math.max(120, monitorsEl.clientWidth * 0.45));
+  bars.classList.add('bars-compact');
+  row.append(bars);
+
   row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
   row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime[rangeKey()])));
   makeOpener(row, monitor);
@@ -518,21 +524,10 @@ function renderCompactRow(monitor) {
 }
 
 function renderGroup(group, monitors) {
-  const stored = localStorage.getItem(`group:${group}`);
-  const compact = stored ? stored === 'compact' : startsCompact(group, monitors);
+  const compact = isCompact(group, monitors);
 
-  const head = el('button', 'group-head');
-  head.type = 'button';
-  head.setAttribute('aria-expanded', String(!compact));
-  const label = el('span', 'group-title', group);
-  const caret = svg('svg', { viewBox: '0 0 24 24' });
-  caret.append(svg('path', { d: 'M6 9l6 6 6-6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
-  label.append(caret);
-  head.append(label, el('span', 'group-summary', summarize(monitors)));
-  head.addEventListener('click', () => {
-    localStorage.setItem(`group:${group}`, compact ? 'expanded' : 'compact');
-    renderMonitors();
-  });
+  const head = el('div', 'group-head');
+  head.append(el('span', 'group-title', group), el('span', 'group-summary', summarize(monitors)));
   monitorsEl.append(head);
 
   if (!compact) {

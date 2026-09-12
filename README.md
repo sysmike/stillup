@@ -4,13 +4,16 @@ Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime) that
 Action, history is committed to this repository, outages open and close GitHub
 issues, and the status page is published with GitHub Pages.
 
-<p>
-  <img src=".screenshots/dark.png" width="49%" alt="Status page in the dark theme">
-  <img src=".screenshots/light.png" width="49%" alt="Status page in the light theme">
-  <img src=".screenshots/detail.png" width="49%" alt="Monitor details with history, response time and incidents">
-  <img src=".screenshots/incident.png" width="49%" alt="Incident read on the status page itself">
-  <img src=".screenshots/mobile.png" width="23%" alt="Status page on a phone">
-</p>
+<details>
+  <summary>Screenshots — status page, monitor details, incident view, mobile</summary>
+  <p>
+    <img src=".screenshots/dark.png" width="49%" alt="Status page in the dark theme">
+    <img src=".screenshots/light.png" width="49%" alt="Status page in the light theme">
+    <img src=".screenshots/detail.png" width="49%" alt="Monitor details with history, response time and incidents">
+    <img src=".screenshots/incident.png" width="49%" alt="Incident read on the status page itself">
+    <img src=".screenshots/mobile.png" width="23%" alt="Status page on a phone">
+  </p>
+</details>
 
 ## Setup
 
@@ -150,11 +153,15 @@ code and http links survive, and markup does not.
 ## Groups
 
 A monitor with a `group` is listed under that heading. A collapsed group is
-shown compactly, one line per monitor with its status and uptime, instead of a
-card with the 90 day history. Clicking the heading toggles it, and that choice
-is remembered in the visitor's browser.
+shown compactly: one line per monitor with its status, its history strip and
+its uptime, instead of a full card. The strip in a row holds as many days as
+the row has room for, fewer than a card shows, and hovering a day still names
+it. Clicking a row opens the monitor's details, the same as clicking a card.
 
-`SITE_GROUP_COMPACT` decides the default:
+Which groups are collapsed is configuration and not something a visitor
+changes.
+
+`SITE_GROUP_COMPACT` decides the rule:
 
 | Value | Behaviour |
 | --- | --- |
@@ -166,7 +173,7 @@ is remembered in the visitor's browser.
 A group that contains something down or degraded is never collapsed by the
 `auto` rule: an outage stays visible without a click.
 
-A single group can override the default with a `GROUP_<NAME>` variable, where
+A single group can override that rule with a `GROUP_<NAME>` variable, where
 the name matches the group the monitors refer to:
 
 ```

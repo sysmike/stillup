@@ -309,43 +309,17 @@ main.shell {
 
 .group-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  width: 100%;
   margin: 18px 0 -2px;
   padding: 2px 2px 4px;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
 .group-title {
-  display: flex;
-  align-items: center;
-  gap: 5px;
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
-}
-
-.group-head:hover .group-title {
-  color: var(--text);
-}
-
-.group-title svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.2;
-  transition: transform 0.15s;
-}
-
-.group-head[aria-expanded='true'] .group-title svg {
-  transform: rotate(180deg);
 }
 
 .group-summary {
@@ -364,8 +338,8 @@ main.shell {
 .compact-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 18px;
+  gap: 12px;
+  padding: 10px 18px;
   border-top: 1px solid var(--border);
 }
 
@@ -374,12 +348,21 @@ main.shell {
 }
 
 .compact-name {
-  flex: 1;
+  flex: 0 1 26%;
+  min-width: 88px;
   font-weight: 500;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Specificity has to beat the plain .bars rule further down. */
+.bars.bars-compact {
+  flex: 1 1 auto;
+  height: 20px;
+  margin: 0;
+  min-width: 100px;
+  gap: 1.5px;
 }
 
 .compact-name a {
@@ -642,12 +625,22 @@ main.shell {
   border-radius: 5px;
 }
 
+@media (max-width: 720px) {
+  .compact-sub {
+    display: none;
+  }
+}
+
 @media (max-width: 560px) {
   .bars {
     height: 30px;
   }
   .card-desc {
     display: none;
+  }
+  .compact-row {
+    gap: 9px;
+    padding: 10px 14px;
   }
 }
 
@@ -666,8 +659,7 @@ main.shell {
 }
 
 .card:focus-visible,
-.compact-row:focus-visible,
-.group-head:focus-visible {
+.compact-row:focus-visible {
   outline: 2px solid var(--status, var(--muted));
   outline-offset: 2px;
 }
