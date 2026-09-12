@@ -320,6 +320,14 @@ function inline(target, text) {
 function renderBody(container, body, skip = []) {
   let list = null;
   let skipping = false;
+  // A heading is only worth showing once something follows it, so it waits here
+  // until the section turns out to have content.
+  let heading = null;
+  const place = (node) => {
+    if (heading) container.append(heading);
+    heading = null;
+    container.append(node);
+  };
   for (const raw of body.split('\n')) {
     const line = raw.trim();
     if (!line) {
@@ -327,15 +335,22 @@ function renderBody(container, body, skip = []) {
       continue;
     }
     if (/^#{1,6}\s/.test(line)) {
-      const heading = line.replace(/^#{1,6}\s*/, '');
+      const text = line.replace(/^#{1,6}\s*/, '');
       list = null;
-      skipping = skip.includes(heading.toLowerCase());
-      if (!skipping) container.append(el('h4', 'body-heading', heading));
+      skipping = skip.includes(text.toLowerCase());
+      heading = skipping ? null : el('h4', 'body-heading', text);
       continue;
     }
     if (skipping) continue;
+    // What an issue form writes into an optional field that was left blank.
+    if (line === '_No response_') {
+      list = null;
+      heading = null;
+      skipping = true;
+      continue;
+    }
     if (/^[-*]\s/.test(line)) {
-      if (!list) container.append((list = el('ul', 'body-list')));
+      if (!list) place((list = el('ul', 'body-list')));
       const item = el('li');
       inline(item, line.replace(/^[-*]\s*/, ''));
       list.append(item);
@@ -344,7 +359,7 @@ function renderBody(container, body, skip = []) {
     list = null;
     const paragraph = el('p', 'body-text');
     inline(paragraph, line);
-    container.append(paragraph);
+    place(paragraph);
   }
 }
 
@@ -393,7 +408,7 @@ function openIncident(number) {
   // template writes would only repeat them. It stays when nothing resolved.
   const section = el('div', 'detail-section');
   if (incident.body) renderBody(section, incident.body, affected.length ? ['affected monitors'] : []);
-  else section.append(el('p', 'detail-empty', 'No description was given.'));
+  if (!section.childElementCount) section.append(el('p', 'detail-empty', 'No description was given.'));
   detailBody.append(section);
 
   const footer = el('p', 'detail-meta detail-source');
