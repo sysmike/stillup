@@ -167,6 +167,7 @@ main.shell {
 }
 
 .banner-dot {
+  position: relative;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -361,11 +362,40 @@ main.shell {
 }
 
 .dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--status, var(--none));
   flex: none;
+}
+
+/* A ring around the dot that breathes in and out rather than expanding and
+   vanishing: at any moment there is something to see, so it reads as a slow
+   pulse instead of a blink. Only for readers who have not asked for less
+   motion. */
+@keyframes status-pulse {
+  0%,
+  100% {
+    transform: scale(1.4);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(2.9);
+    opacity: 0.1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dot::after,
+  .banner-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--status, var(--none));
+    animation: status-pulse 3.2s ease-in-out infinite;
+  }
 }
 
 /* Fixed widths so every strip ends at the same place. The word is centred in
