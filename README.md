@@ -58,7 +58,6 @@ the certificate.
 | `SITE_LINK` | none | Link in the footer |
 | `SITE_LOGO` | none | Logo URL shown next to the title |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
-| `SITE_GROUP_COMPACT` | `auto` | `auto`, `always`, `never`, or a number to change the `auto` threshold |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues |
 
@@ -110,7 +109,7 @@ works for you, anything else means it does not.
 | `degradedMs` | `0` | Responses slower than this are reported as degraded (`0` disables) |
 | `followRedirects` | `true` | Follow 3xx responses |
 | `group` | none | Groups monitors under a heading |
-| `description` | none | Subtitle on the card |
+| `description` | none | Shown in the monitor's details |
 | `link` | `url` | Link target of the monitor name |
 | `private` | `false`, `true` for secrets | Keeps the URL out of the published site and out of incident issues |
 | `order` | `100` | Sort order within a group |
@@ -126,16 +125,16 @@ messages such as `getaddrinfo ENOTFOUND …`.
 
 What is still published for a private monitor: the slug derived from the secret
 name, the display name, the group and description, and the status, uptime and
-response times. Set `link` if the card should point somewhere anyway. Adding
+response times. Set `link` if the monitor should point somewhere anyway. Adding
 `"private": true` to a monitor defined as a variable has the same effect.
 
 ## Monitor details
 
-Clicking a monitor, in either view, opens its details: current status, uptime
-over today, 7 and 30 days, the day by day history, the response time of the
-last 7 days, and the incidents that refer to it. The page itself shows the
+Clicking a monitor opens its details: current status, uptime over today, 7 and
+30 days, the day by day history, the response time of the last 7 days, and the
+incidents that refer to it. Its description, if it has one, is shown there too. The page itself shows the
 last 30 days; the history in the details is the full 90. The monitored URL is
-a link in there rather than on the card, so clicking a monitor shows its
+a link in there rather than on the row, so clicking a monitor shows its
 history instead of navigating away.
 
 Each monitor has its own address, `…/#/<slug>`, which opens the page with that
@@ -153,41 +152,17 @@ code and http links survive, and markup does not.
 
 ## Groups
 
-A monitor with a `group` is listed under that heading. A collapsed group is
-shown compactly: one line per monitor with its status, its history strip and
-its uptime, instead of a full card. Both strips cover the same 30 days, and
-hovering a day names it. Clicking a row opens the monitor's details, the same
-as clicking a card.
+A monitor with a `group` is listed under that heading, with a line at its right
+saying how many monitors the group holds and whether any of them are down.
+Monitors without a group are listed on their own.
 
-Which groups are collapsed is configuration and not something a visitor
-changes.
-
-`SITE_GROUP_COMPACT` decides the rule:
-
-| Value | Behaviour |
-| --- | --- |
-| `auto` (default) | A group starts compact when it holds more than four monitors and all of them are up |
-| a number | Same, with that number instead of four |
-| `always` | Every group starts compact |
-| `never` | Every group starts expanded |
-
-A group that contains something down or degraded is never collapsed by the
-`auto` rule: an outage stays visible without a click.
-
-A `GROUP_<NAME>` variable positions one group and overrides that rule for it.
-The name matches the group its monitors refer to:
+A `GROUP_<NAME>` variable sets where one group sits, the name matching the
+group its monitors refer to:
 
 ```
-GROUP_INTERNAL   compact
-GROUP_PUBLIC     expanded
-GROUP_EDGE       2
-GROUP_CORE       {"order": 1, "compact": "expanded"}
+GROUP_INTERNAL   1
+GROUP_PUBLIC     {"order": 2}
 ```
-
-A bare number is the group's position, any other bare value is a compact
-setting, and JSON sets both. `compact`, `always`, `true` and `yes` mean the
-same thing, as do `expanded`, `never`, `false` and `no`; `auto` falls back to
-the site rule.
 
 Groups are ordered the way monitors are: by `order` ascending, defaulting to
 `100`. Groups left without one keep the position their monitors give them,

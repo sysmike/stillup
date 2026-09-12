@@ -152,7 +152,7 @@ function renderChart(container, payload) {
   const points = payload.points.filter(([, , ms]) => ms > 0);
   container.replaceChildren();
   if (points.length < 2) {
-    container.append(el('p', 'card-sub', 'Not enough response time data yet.'));
+    container.append(el('p', 'detail-empty', 'Not enough response time data yet.'));
     return;
   }
 
@@ -190,8 +190,8 @@ const dialog = document.getElementById('detail');
 const detailBody = document.getElementById('detail-body');
 const chartCache = new Map();
 
-// Cards and compact rows are click targets rather than links: on a status page
-// the interesting destination is the history, not the monitored site.
+// Rows are click targets rather than links: on a status page the interesting
+// destination is the history, not the monitored site.
 function makeOpener(element, monitor) {
   const open = () => {
     const hash = `#/${monitor.slug}`;
@@ -402,7 +402,7 @@ async function openDetail(slug) {
   const chartSection = el('div', 'detail-section');
   chartSection.append(el('h3', 'panel-title', 'Response time'));
   const chart = el('div', 'chart');
-  chart.append(el('p', 'card-sub', 'Loading…'));
+  chart.append(el('p', 'detail-empty', 'Loading…'));
   chartSection.append(chart);
   detailBody.append(chartSection);
 
@@ -435,7 +435,7 @@ async function openDetail(slug) {
     }
     renderChart(chart, chartCache.get(slug));
   } catch {
-    chart.replaceChildren(el('p', 'card-sub', 'Could not load response times.'));
+    chart.replaceChildren(el('p', 'detail-empty', 'Could not load response times.'));
   }
 }
 
@@ -471,44 +471,6 @@ dialog.addEventListener('click', (event) => {
 document.getElementById('detail-close').addEventListener('click', closeDetail);
 addEventListener('hashchange', syncDialog);
 
-function renderCard(monitor) {
-  const card = el('div', 'card');
-  card.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
-
-  // Name, strip and figure sit in one row. The strip takes the space left over
-  // while it is measured, then narrows to what it painted.
-  const head = el('div', 'card-head');
-  const left = el('div', 'card-left');
-  const name = el('div', 'card-name');
-  name.append(el('span', 'dot'), el('span', null, monitor.name));
-  left.append(name);
-  if (monitor.description) left.append(el('p', 'card-desc', monitor.description));
-
-  const bars = el('div', 'bars');
-
-  // Status and figure sit beside the strip exactly as they do in a compact
-  // row, which is what lines the two strips up with each other.
-  const status = el('span', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status);
-  const uptime = el('span', 'card-uptime', formatUptime(monitor.uptime.month));
-
-  head.append(left, bars, status, uptime);
-  card.append(head);
-  registerStrip(bars, monitor, 2, bars);
-
-  const footer = el('div', 'card-footer');
-  const more = el('span', 'card-more');
-  more.append(el('span', null, 'Details'));
-  const caret = svg('svg', { viewBox: '0 0 24 24' });
-  caret.append(svg('path', { d: 'M9 6l6 6-6 6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
-  more.append(caret);
-
-  const meta = monitor.lastMs !== null ? `${monitor.lastMs}ms · checked ${relative(monitor.lastCheck)}` : 'No checks yet';
-  footer.append(more, el('span', null, meta));
-  card.append(footer);
-  makeOpener(card, monitor);
-  return card;
-}
-
 function renderIncidents(incidents) {
   const section = document.getElementById('incidents');
   const list = document.getElementById('incident-list');
@@ -525,19 +487,6 @@ function renderIncidents(incidents) {
   section.hidden = false;
 }
 
-// Collapsed groups show one line per monitor instead of a card. Which groups
-// are collapsed is configuration rather than something a visitor picks: the
-// group setting decides, and 'auto' collapses long groups as long as
-// everything in them is up.
-function isCompact(group, monitors) {
-  const setting = data.groups?.[group]?.compact ?? 'auto';
-  if (setting !== 'auto') return setting;
-  const { mode, threshold } = data.site.groupCompact ?? { mode: 'auto', threshold: 4 };
-  if (mode === 'never') return false;
-  if (mode === 'always') return true;
-  return monitors.length > threshold && monitors.every((monitor) => monitor.status === 'up');
-}
-
 function summarize(monitors) {
   const broken = monitors.filter((monitor) => monitor.status === 'down' || monitor.status === 'partial');
   const degraded = monitors.filter((monitor) => monitor.status === 'degraded');
@@ -549,8 +498,8 @@ function summarize(monitors) {
 }
 
 // Strips are filled once the page has been laid out, because how much room
-// they get depends on what sits beside them. Guessing at it is what left them
-// clipped in a compact row and overflowing a card.
+// they get depends on the name, status and figure beside them. Guessing at it
+// is what used to leave them clipped.
 const pendingStrips = [];
 
 function registerStrip(bars, monitor, gap, wrapper = null) {
@@ -559,8 +508,6 @@ function registerStrip(bars, monitor, gap, wrapper = null) {
 
 function fillPendingStrips() {
   for (const { bars, monitor, gap, wrapper } of pendingStrips.splice(0)) {
-    // A card measures the room it has before the strip is narrowed to it; a
-    // compact row's strip is a flex item that already holds the leftover.
     const painted = fillBars(bars, monitor, (wrapper || bars).clientWidth, gap, RANGE_DAYS, BAR_WIDTH);
     if (wrapper) {
       // Reported as a property rather than a width, so a media query can still
@@ -571,37 +518,32 @@ function fillPendingStrips() {
   }
 }
 
-function renderCompactRow(monitor) {
-  const row = el('div', 'compact-row');
+function renderRow(monitor) {
+  const row = el('div', 'row');
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
-  row.append(el('span', 'dot'), el('span', 'compact-name', monitor.name));
+  row.append(el('span', 'dot'), el('span', 'row-name', monitor.name));
 
   // How much room the strip gets depends on the name, status and figure beside
   // it, which is only known once the row is laid out. It is filled afterwards
   // rather than guessed at, which is what used to leave it clipped.
-  const bars = el('div', 'bars bars-compact');
+  const bars = el('div', 'bars bars-row');
   row.append(bars);
   registerStrip(bars, monitor, 2);
 
-  row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
-  row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime.month)));
+  row.append(el('span', 'row-status', STATUS_TEXT[monitor.status] || monitor.status));
+  row.append(el('span', 'row-uptime', formatUptime(monitor.uptime.month)));
   makeOpener(row, monitor);
   return row;
 }
 
 function renderGroup(group, monitors) {
-  const compact = isCompact(group, monitors);
-
-  const head = el('div', 'group-head');
-  head.append(el('span', 'group-title', group), el('span', 'group-summary', summarize(monitors)));
-  monitorsEl.append(head);
-
-  if (!compact) {
-    for (const monitor of monitors) monitorsEl.append(renderCard(monitor));
-    return;
+  if (group) {
+    const head = el('div', 'group-head');
+    head.append(el('span', 'group-title', group), el('span', 'group-summary', summarize(monitors)));
+    monitorsEl.append(head);
   }
-  const list = el('div', 'compact');
-  for (const monitor of monitors) list.append(renderCompactRow(monitor));
+  const list = el('div', 'rows');
+  for (const monitor of monitors) list.append(renderRow(monitor));
   monitorsEl.append(list);
 }
 
@@ -618,13 +560,7 @@ function renderMonitors() {
   const ordered = [...groups.entries()].sort(
     ([a], [b]) => (data.groups?.[a]?.order ?? 100) - (data.groups?.[b]?.order ?? 100),
   );
-  for (const [group, monitors] of ordered) {
-    if (!group) {
-      for (const monitor of monitors) monitorsEl.append(renderCard(monitor));
-      continue;
-    }
-    renderGroup(group, monitors);
-  }
+  for (const [group, monitors] of ordered) renderGroup(group, monitors);
   fillPendingStrips();
 }
 
