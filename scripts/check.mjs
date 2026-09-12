@@ -129,24 +129,45 @@ if (monitors.length === 0) {
 }
 
 const timestamp = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-const results = [];
 
-// A private monitor never hands its URL on: results feed the incident issues
-// and the published site, so this is the single place to strip it.
-for (const monitor of monitors) {
-  const outcome = await check(monitor);
-  const result = {
-    slug: monitor.slug,
-    name: monitor.name,
-    url: monitor.private ? monitor.link : monitor.url,
-    timestamp,
-    ...outcome,
-    error: monitor.private ? redact(outcome.error, monitor.url) : outcome.error,
+// Monitors do not depend on each other, so a run takes as long as its slowest
+// one rather than the sum of them all. The limit keeps a long list from
+// competing for the runner, which would show up in the times it measures.
+const CONCURRENCY = 8;
+
+async function checkAll(list) {
+  const outcomes = new Array(list.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < list.length) {
+      const index = next;
+      next += 1;
+      outcomes[index] = await check(list[index]);
+    }
   };
-  appendResult(monitor.slug, result);
-  results.push(result);
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, list.length) }, worker));
+  return outcomes;
+}
+
+const outcomes = await checkAll(monitors);
+
+// History and the log stay in monitor order, whatever order the checks
+// finished in. A private monitor never hands its URL on: results feed the
+// incident issues and the published site, so this is the single place to
+// strip it.
+const results = monitors.map((monitor, index) => ({
+  slug: monitor.slug,
+  name: monitor.name,
+  url: monitor.private ? monitor.link : monitor.url,
+  timestamp,
+  ...outcomes[index],
+  error: monitor.private ? redact(outcomes[index].error, monitor.url) : outcomes[index].error,
+}));
+
+for (const [index, result] of results.entries()) {
+  appendResult(result.slug, result);
   console.log(
-    `${result.status.padEnd(8)} ${monitor.name} — ${result.code || '—'} in ${result.ms}ms` +
+    `${result.status.padEnd(8)} ${monitors[index].name} — ${result.code || '—'} in ${result.ms}ms` +
       (result.error ? ` (${result.error})` : ''),
   );
 }

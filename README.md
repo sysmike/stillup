@@ -169,8 +169,8 @@ which is what happens when no group is configured at all.
 
 `.github/workflows/uptime.yml` runs every five minutes:
 
-1. `scripts/check.mjs` requests every monitor and appends the result to
-   `history/`.
+1. `scripts/check.mjs` requests the monitors, up to eight at a time, and
+   appends the results to `history/` in the order the monitors are listed.
 2. `scripts/incidents.mjs` opens an issue when a monitor has failed
    `INCIDENT_THRESHOLD` times in a row, comments the downtime and closes the
    issue on recovery, and writes a snapshot of recent incidents.
@@ -222,6 +222,16 @@ npx serve _site
 workflows pass in from the Actions `vars` and `secrets` contexts.
 `scripts/incidents.mjs` additionally needs `GITHUB_TOKEN` and
 `GITHUB_REPOSITORY`.
+
+## Tests
+
+```bash
+node --test
+```
+
+Covers configuration parsing, the redaction that keeps a private monitor's URL
+out of issues, and the daily rollup. No dependencies, and the Test workflow
+runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes
 

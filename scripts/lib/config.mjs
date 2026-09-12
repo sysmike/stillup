@@ -71,14 +71,20 @@ export function statusMatches(code, expected) {
 // before it reaches an issue.
 export function redact(text, url) {
   if (!text) return text;
-  let host = '';
+  let hosts = [];
   try {
-    host = new URL(url).host;
+    const parsed = new URL(url);
+    // host carries the port, hostname does not: a DNS failure quotes the bare
+    // name, a refused connection quotes the pair. Longest first, so the pair
+    // collapses into one placeholder instead of leaving the port behind.
+    hosts = [...new Set([parsed.host, parsed.hostname])].filter(Boolean).sort((a, b) => b.length - a.length);
   } catch {
-    host = '';
+    hosts = [];
   }
   let result = text.split(url).join('[redacted]');
-  if (host) result = result.replace(new RegExp(host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[redacted]');
+  for (const host of hosts) {
+    result = result.replace(new RegExp(host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[redacted]');
+  }
   // Connection errors quote the resolved address rather than the host name.
   return result.replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b|\[[0-9a-f:]+\]/gi, '[redacted]');
 }

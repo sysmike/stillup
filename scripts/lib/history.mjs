@@ -12,9 +12,10 @@ export const DAILY_HEADER = 'date,checks,up,degraded,down,avg,min,max';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-function read(file) {
-  if (!existsSync(file)) return [];
-  return readFileSync(file, 'utf8')
+// Drops the header row: a file written by an older run still parses as long
+// as the columns it does have line up.
+export function parseCsv(text) {
+  return text
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
@@ -22,9 +23,18 @@ function read(file) {
     .map((line) => line.split(','));
 }
 
+export function formatCsv(header, rows) {
+  return `${header}\n${rows.map((row) => row.join(',')).join('\n')}\n`;
+}
+
+function read(file) {
+  if (!existsSync(file)) return [];
+  return parseCsv(readFileSync(file, 'utf8'));
+}
+
 function write(file, header, rows) {
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${header}\n${rows.map((row) => row.join(',')).join('\n')}\n`);
+  writeFileSync(file, formatCsv(header, rows));
 }
 
 export const rawPath = (slug) => join(ROOT, 'history', 'raw', `${slug}.csv`);
@@ -52,9 +62,33 @@ export function readDaily(slug) {
   }));
 }
 
-export function appendResult(slug, result, now = new Date()) {
+// Raw history covers a moving window; anything older only survives in the
+// daily rollup.
+export function pruneRaw(entries, now = new Date()) {
   const cutoff = new Date(now.getTime() - RAW_DAYS * 86400000).toISOString();
-  const entries = readRaw(slug).filter((entry) => entry.timestamp >= cutoff);
+  return entries.filter((entry) => entry.timestamp >= cutoff);
+}
+
+export const emptyDay = (date) => ({ date, checks: 0, up: 0, degraded: 0, down: 0, avg: 0, min: 0, max: 0 });
+
+// Folds one result into a day, returning a new row. The average covers the
+// checks that measured something: a down check reports no time, and neither
+// does a dummy monitor, so counting either would drag the average to zero.
+export function rollupDay(day, result) {
+  const next = { ...day, checks: day.checks + 1 };
+  next[result.status] += 1;
+  if (result.status === 'down' || result.ms <= 0) return next;
+
+  const measured = day.checks - day.down;
+  const count = measured + 1;
+  next.avg = Math.round((day.avg * measured + result.ms) / count);
+  next.min = day.min === 0 ? result.ms : Math.min(day.min, result.ms);
+  next.max = Math.max(day.max, result.ms);
+  return next;
+}
+
+export function appendResult(slug, result, now = new Date()) {
+  const entries = pruneRaw(readRaw(slug), now);
   entries.push({
     timestamp: result.timestamp,
     status: result.status,
@@ -69,22 +103,10 @@ export function appendResult(slug, result, now = new Date()) {
 
   const date = result.timestamp.slice(0, 10);
   const days = readDaily(slug);
-  let day = days.find((entry) => entry.date === date);
-  if (!day) {
-    day = { date, checks: 0, up: 0, degraded: 0, down: 0, avg: 0, min: 0, max: 0 };
-    days.push(day);
-  }
-
-  const measured = day.checks - day.down;
-  const totalMs = day.avg * measured;
-  day.checks += 1;
-  day[result.status] += 1;
-  if (result.status !== 'down' && result.ms > 0) {
-    const count = measured + 1;
-    day.avg = Math.round((totalMs + result.ms) / count);
-    day.min = day.min === 0 ? result.ms : Math.min(day.min, result.ms);
-    day.max = Math.max(day.max, result.ms);
-  }
+  const index = days.findIndex((entry) => entry.date === date);
+  const day = rollupDay(index === -1 ? emptyDay(date) : days[index], result);
+  if (index === -1) days.push(day);
+  else days[index] = day;
 
   days.sort((a, b) => a.date.localeCompare(b.date));
   write(
