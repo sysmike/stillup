@@ -445,7 +445,7 @@ main.shell {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 50%;
+    border-radius: 100%;
     background: var(--status, var(--none));
     animation: status-pulse 2s ease infinite;
   }
