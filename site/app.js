@@ -484,20 +484,16 @@ function renderCard(monitor) {
   left.append(name);
   if (monitor.description) left.append(el('p', 'card-desc', monitor.description));
 
-  const strip = el('div', 'strip-block');
   const bars = el('div', 'bars');
-  const scale = el('div', 'scale');
-  scale.append(el('span', null, `${RANGE_DAYS} days ago`), el('span'), el('span', null, 'Today'));
-  strip.append(bars, scale);
 
   // Status and figure sit beside the strip exactly as they do in a compact
   // row, which is what lines the two strips up with each other.
   const status = el('span', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status);
   const uptime = el('span', 'card-uptime', formatUptime(monitor.uptime.month));
 
-  head.append(left, strip, status, uptime);
+  head.append(left, bars, status, uptime);
   card.append(head);
-  registerStrip(bars, monitor, 2, strip);
+  registerStrip(bars, monitor, 2, bars);
 
   const footer = el('div', 'card-footer');
   const more = el('span', 'card-more');

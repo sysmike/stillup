@@ -378,19 +378,15 @@ main.shell {
 
 /* Takes the leftover width while it is measured, then holds the width it
    painted, with the auto margin keeping it against the figure on the right. */
-.card .strip-block {
+.card .bars {
   flex: 1 1 auto;
   min-width: 0;
-  margin-left: auto;
+  margin: 0 0 0 auto;
 }
 
-.card .strip-block.is-sized {
+.card .bars.is-sized {
   flex: 0 0 auto;
   width: var(--strip-width);
-}
-
-.card .bars {
-  margin: 0 0 5px;
 }
 
 .card-name {
@@ -652,8 +648,8 @@ main.shell {
     flex-wrap: wrap;
     gap: 10px 16px;
   }
-  .card .strip-block,
-  .card .strip-block.is-sized {
+  .card .bars,
+  .card .bars.is-sized {
     order: 3;
     flex: 1 0 100%;
     width: auto;
