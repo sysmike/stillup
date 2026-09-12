@@ -65,6 +65,24 @@ function elapsed(from, to) {
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
 
+// Date and time are formatted apart and joined with a comma: asking for both
+// at once gives some locales a connecting word in the middle.
+function formatDateTime(iso) {
+  const at = new Date(iso);
+  const day = at.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+  const time = at.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  });
+  return `${day}, ${time} UTC`;
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -215,20 +233,36 @@ function figure(value, label) {
   return box;
 }
 
+const INCIDENT_ICONS = {
+  open: 'M12 3.5a6 6 0 0 1 6 6v4l1.6 3H4.4L6 13.5v-4a6 6 0 0 1 6-6zM9.7 19.5a2.4 2.4 0 0 0 4.6 0',
+  maintenance: 'M4 7.5h16v12.5H4zM8 4v5M16 4v5M4 12h16',
+  resolved: 'M5 12.5 10 17.5 19 7',
+};
+
+// One entry of the timeline: when it happened, what happened, and how it went.
 function renderIncidentItem(incident) {
-  const item = el('li');
-  const open = () => {
+  const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
+  const item = el('li', 'event');
+  item.dataset.state = state;
+
+  const icon = el('span', 'event-icon');
+  const mark = svg('svg', { viewBox: '0 0 24 24' });
+  mark.append(svg('path', { d: INCIDENT_ICONS[state], 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  icon.append(mark);
+
+  const body = el('div', 'event-body');
+  body.append(el('div', 'event-date', formatDateTime(incident.createdAt)));
+
+  const title = el('button', 'incident-title', incident.title);
+  title.type = 'button';
+  title.addEventListener('click', () => {
     const hash = `#/incident/${incident.number}`;
     if (location.hash === hash) openIncident(incident.number);
     else location.hash = hash;
-  };
-  const title = el('button', 'incident-title', incident.title);
-  title.type = 'button';
-  title.addEventListener('click', open);
-  item.append(title);
+  });
+  body.append(title);
 
   const meta = el('div', 'incident-meta');
-  const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
   meta.append(el('span', `tag tag-${state}`, state));
   meta.append(
     el(
@@ -236,10 +270,12 @@ function renderIncidentItem(incident) {
       null,
       incident.state === 'open'
         ? `${incident.maintenance ? 'opened' : 'started'} ${relative(incident.createdAt)}`
-        : `${formatDate(incident.createdAt)} · ${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)}`,
+        : `${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`,
     ),
   );
-  item.append(meta);
+  body.append(meta);
+
+  item.append(icon, body);
   return item;
 }
 
