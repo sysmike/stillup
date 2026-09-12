@@ -1,6 +1,6 @@
-# status-page
+# Status page
 
-Uptime monitoring that runs entirely on GitHub: checks run as a scheduled
+Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime) that runs entirely on GitHub: checks run as a scheduled
 Action, history is committed to this repository, outages open and close GitHub
 issues, and the status page is published with GitHub Pages.
 
