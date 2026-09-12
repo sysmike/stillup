@@ -116,10 +116,10 @@ works for you, anything else means it does not.
 | `followRedirects` | `true` | Follow 3xx responses |
 | `group` | none | Groups monitors under a heading |
 | `description` | none | Shown in the monitor's details |
-| `link` | `url` | Link target of the monitor name |
+| `link` | `url` | Address linked in the monitor's details |
 | `private` | `false`, `true` for secrets | Keeps the URL out of the published site and out of incident issues |
 | `order` | `100` | Sort order within a group |
-| `slug` | derived from the variable name | Overrides the slug used for history files |
+| `slug` | derived from the variable name | Overrides the slug used for history files and the monitor's address |
 
 ### Private monitors
 
@@ -138,10 +138,10 @@ response times. Set `link` if the monitor should point somewhere anyway. Adding
 
 Clicking a monitor opens its details: current status, uptime over today, 7 and
 30 days, the day by day history, the response time of the last 7 days, and the
-incidents that refer to it. Its description, if it has one, is shown there too. The page itself shows the
-last 30 days; the history in the details is the full 90. The monitored URL is
-a link in there rather than on the row, so clicking a monitor shows its
-history instead of navigating away.
+incidents that refer to it. Its description, if it has one, is shown there
+too. The page itself shows the last 30 days; the history in the details is the
+full 90. The monitored URL is a link in there rather than on the row, so
+clicking a monitor shows its history instead of navigating away.
 
 Each monitor has its own address, `…/#/<slug>`, which opens the page with that
 monitor already in front. Incidents are matched by the marker in the issues
@@ -159,7 +159,7 @@ code and http links survive, and markup does not.
 ## Groups
 
 A monitor with a `group` is listed under that heading, with a line at its right
-saying how many monitors the group holds and whether any of them are down.
+saying how many monitors the group holds and whether any are down or degraded.
 Monitors without a group are listed on their own.
 
 A `GROUP_<NAME>` variable sets where one group sits, the name matching the
@@ -245,8 +245,8 @@ workflows pass in from the Actions `vars` and `secrets` contexts.
   public and define sensitive monitors as secrets.
 - The workflows use the Node.js that ships with the runner image, currently
   22.x, so there is no toolchain setup step.
-- Uptime percentages count degraded checks as up; the day tooltip shows the
-  share of successful checks.
+- Uptime percentages count degraded checks as up, in the figures and in the
+  day tooltip alike; only a failed check counts against them.
 - Checks run from GitHub's runners, so they only see outages that are visible
   from the public internet.
 
