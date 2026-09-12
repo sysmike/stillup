@@ -114,11 +114,18 @@ const overall = active.some((monitor) => monitor.status === 'down')
       ? 'up'
       : 'none';
 
+// Where the page can read the current state without a redeployment. Empty
+// outside Actions, which keeps a local build self-contained.
+const live = process.env.GITHUB_REPOSITORY
+  ? `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/${process.env.GITHUB_REF_NAME || 'main'}/history/live.json`
+  : null;
+
 writeFileSync(
   join(OUT, 'api', 'summary.json'),
   JSON.stringify(
     {
       generatedAt: new Date().toISOString(),
+      live,
       site,
       overall,
       days: DAYS,

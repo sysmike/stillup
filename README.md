@@ -136,7 +136,16 @@ history/raw/<slug>.csv     every check of the last 7 days (response time chart)
 history/daily/<slug>.csv   one aggregated row per day, kept indefinitely
 history/state.json         current status and open issue per monitor
 history/incidents.json     snapshot of recent incident issues
+history/live.json          current status and incidents, read by the page itself
 ```
+
+The build is a snapshot, so the deployed page also fetches `history/live.json`
+from `raw.githubusercontent.com` on load, every minute, and whenever the tab
+returns to the foreground. Status, response times and incidents therefore
+refresh without a deployment, and a tab left open during an outage keeps up.
+The 90 day bars come from the build and only change when the site is rebuilt.
+GitHub caches raw files for five minutes, which is the practical limit on how
+fresh this is. If the fetch fails the page keeps its build time data.
 
 Issues labelled with the incident label show up on the page, so you can also
 open one by hand for planned work: the **Planned maintenance** issue template

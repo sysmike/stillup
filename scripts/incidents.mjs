@@ -12,6 +12,7 @@ import { api, ensureLabel, repo } from './lib/github.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const STATE_FILE = `${ROOT}history/state.json`;
 const INCIDENTS_FILE = `${ROOT}history/incidents.json`;
+const LIVE_FILE = `${ROOT}history/live.json`;
 const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 
 const marker = (slug) => `<!-- monitor:${slug} -->`;
@@ -133,6 +134,33 @@ const snapshot = JSON.stringify(
 // what the page shows just as much as a monitor going down does.
 if (snapshot !== JSON.stringify(readJson(INCIDENTS_FILE, []), null, 2)) changed = true;
 writeFileSync(INCIDENTS_FILE, `${snapshot}\n`);
+
+// The deployed page fetches this file straight from the repository, so the
+// numbers refresh between deployments instead of freezing at build time. It
+// holds only what changes every run; the 90 day history stays in the build.
+writeFileSync(
+  LIVE_FILE,
+  `${JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      monitors: Object.fromEntries(
+        results.map((result) => [
+          result.slug,
+          {
+            status: result.status,
+            lastCheck: result.timestamp,
+            lastMs: result.ms,
+            lastCode: result.code,
+            since: state[result.slug]?.since ?? null,
+          },
+        ]),
+      ),
+      incidents: JSON.parse(snapshot).slice(0, 20),
+    },
+    null,
+    2,
+  )}\n`,
+);
 
 if (process.env.GITHUB_OUTPUT) {
   appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);

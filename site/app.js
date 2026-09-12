@@ -262,6 +262,39 @@ function renderMonitors() {
   }
 }
 
+function computeOverall(monitors) {
+  const active = monitors.filter((monitor) => monitor.status !== 'none');
+  if (active.some((monitor) => monitor.status === 'down')) {
+    return active.every((monitor) => monitor.status === 'down') ? 'down' : 'partial';
+  }
+  if (active.some((monitor) => monitor.status === 'degraded')) return 'degraded';
+  return active.length ? 'up' : 'none';
+}
+
+// The build is a snapshot. live.json is committed by every check run and served
+// straight from the repository, so an open tab keeps up without a deployment.
+// Any failure here leaves the page on its build time data.
+async function refresh() {
+  if (!data.live) return;
+  try {
+    const response = await fetch(data.live, { cache: 'no-store' });
+    if (!response.ok) return;
+    const live = await response.json();
+    if (!(new Date(live.generatedAt) > new Date(data.generatedAt))) return;
+
+    for (const monitor of data.monitors) {
+      const update = live.monitors?.[monitor.slug];
+      if (update) Object.assign(monitor, update);
+    }
+    data.incidents = live.incidents ?? data.incidents;
+    data.generatedAt = live.generatedAt;
+    data.overall = computeOverall(data.monitors);
+    render();
+  } catch {
+    // offline, rate limited or blocked: keep what the build gave us
+  }
+}
+
 function render() {
   document.title = data.site.title;
   document.getElementById('brand-title').textContent = data.site.title;
@@ -326,6 +359,11 @@ try {
   setInterval(() => {
     document.getElementById('updated').textContent = `Checked ${relative(data.generatedAt)}`;
   }, 30000);
+  refresh();
+  setInterval(refresh, 60000);
+  addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refresh();
+  });
 } catch (error) {
   document.getElementById('banner-title').textContent = 'Status data unavailable';
   document.getElementById('banner-meta').textContent = String(error.message || error);
