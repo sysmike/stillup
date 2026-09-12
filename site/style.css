@@ -156,7 +156,7 @@ main.shell {
 
 .banner h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 600;
 }
 
@@ -377,11 +377,11 @@ main.shell {
 @keyframes status-pulse {
   0%,
   100% {
-    transform: scale(1.4);
+    transform: scale(1.2);
     opacity: 0.55;
   }
   50% {
-    transform: scale(2.9);
+    transform: scale(1.95);
     opacity: 0.1;
   }
 }
