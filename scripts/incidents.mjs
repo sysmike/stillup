@@ -106,32 +106,34 @@ for (const result of results) {
 
 writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
 
-if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);
-}
-
 // Snapshot of recent incidents so the site builds without further API calls.
 const recent = await api(
   `/repos/${repo}/issues?state=all&labels=${encodeURIComponent(primaryLabel)}&per_page=30&sort=created&direction=desc`,
 );
 
-writeFileSync(
-  INCIDENTS_FILE,
-  `${JSON.stringify(
-    recent
-      .filter((issue) => !issue.pull_request)
-      .map((issue) => ({
-        number: issue.number,
-        title: issue.title,
-        url: issue.html_url,
-        state: issue.state,
-        createdAt: issue.created_at,
-        closedAt: issue.closed_at,
-        labels: issue.labels.map((label) => label.name),
-        monitor: (issue.body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1] || null,
-        maintenance: issue.labels.some((label) => label.name === 'maintenance'),
-      })),
-    null,
-    2,
-  )}\n`,
+const snapshot = JSON.stringify(
+  recent
+    .filter((issue) => !issue.pull_request)
+    .map((issue) => ({
+      number: issue.number,
+      title: issue.title,
+      url: issue.html_url,
+      state: issue.state,
+      createdAt: issue.created_at,
+      closedAt: issue.closed_at,
+      labels: issue.labels.map((label) => label.name),
+      monitor: (issue.body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1] || null,
+      maintenance: issue.labels.some((label) => label.name === 'maintenance'),
+    })),
+  null,
+  2,
 );
+
+// An incident opened or closed by hand, planned maintenance included, changes
+// what the page shows just as much as a monitor going down does.
+if (snapshot !== JSON.stringify(readJson(INCIDENTS_FILE, []), null, 2)) changed = true;
+writeFileSync(INCIDENTS_FILE, `${snapshot}\n`);
+
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);
+}

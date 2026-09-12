@@ -120,8 +120,11 @@ response times. Set `link` if the card should point somewhere anyway. Adding
    `INCIDENT_THRESHOLD` times in a row, comments the downtime and closes the
    issue on recovery, and writes a snapshot of recent incidents.
 3. The history is committed back to the branch.
-4. If any monitor changed state, the Pages workflow deploys immediately;
-   otherwise the site rebuilds on its own 30 minute schedule.
+4. If anything the page shows changed, the Pages workflow deploys
+   immediately; otherwise the site rebuilds on its own 30 minute schedule.
+   That covers a monitor changing state and an incident issue being opened,
+   edited, relabelled or closed, so planned maintenance appears without
+   waiting. The workflow also runs on `issues` events for that reason.
 
 `.github/workflows/pages.yml` runs `scripts/build.mjs`, which turns the history
 into `_site/api/*.json` next to the static page in `site/`.
