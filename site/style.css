@@ -348,7 +348,7 @@ main.shell {
 }
 
 .compact-name {
-  flex: 1 1 auto;
+  flex: 0 1 26%;
   min-width: 88px;
   font-weight: 500;
   overflow: hidden;
@@ -360,7 +360,7 @@ main.shell {
    shrink and clip its oldest days rather than push into the status and the
    figure beside it. */
 .bars.bars-compact {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   height: 20px;
   margin: 0;
   min-width: 0;

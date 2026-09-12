@@ -96,30 +96,32 @@ const rangeKey = () => (range === 7 ? 'week' : range === 30 ? 'month' : 'quarter
 // derived from them. The cell grows when the range caps the count, so a strip
 // still reaches the end of the space it was given instead of stopping short.
 function stripLayout(width, minBar, gap, lock = 0) {
-  // `lock` fixes the number of days, whatever the range buttons say. The bars
-  // then narrow to fit, and their gaps narrow with them, or a cramped strip
-  // ends up mostly gap.
-  if (lock) {
-    const cell = Math.max(2, Math.floor((width + gap) / lock));
-    return { cell, gap: cell >= 4 ? gap : 1, count: lock };
-  }
-  const minCell = minBar + gap;
-  const wanted = Math.max(7, Math.min(range, Math.floor((width + gap) / minCell)));
-  const cell = Math.max(minCell, Math.round((width + gap) / wanted));
-  return { cell, gap, count: Math.max(7, Math.min(wanted, Math.floor((width + gap) / cell))) };
+  // `lock` fixes the number of days, whatever the range buttons say; otherwise
+  // the range decides, limited by what the width can hold. The cell is whole
+  // pixels, and the gap narrows with it, or a cramped strip is mostly gap.
+  const count = lock || Math.max(7, Math.min(range, Math.floor((width + gap) / (minBar + gap))));
+  const cell = Math.max(lock ? 2 : minBar + gap, Math.floor((width + gap) / count));
+  return { cell, gap: cell >= 4 ? gap : 1, count };
 }
 
-// Bars are laid out on whole pixels. Letting flex share the space instead gives
-// them fractional widths, and rounding those to device pixels is what made the
-// spacing look uneven every few days.
-function renderBars(monitor, width = monitorsEl.clientWidth - 40, minBar = 3, gap = 2, lock = 0) {
-  const bars = el('div', 'bars');
+// Fills an existing strip, so a row can be measured first and filled after.
+function fillBars(bars, monitor, width, minBar = 3, gap = 2, lock = 0) {
   const layout = stripLayout(width, minBar, gap, lock);
-  bars.style.setProperty('--bar', `${layout.cell - layout.gap}px`);
+  const base = layout.cell - layout.gap;
+  bars.style.setProperty('--bar', `${base}px`);
   bars.style.setProperty('--gap', `${layout.gap}px`);
+  bars.replaceChildren();
+
+  // Whole pixel bars rarely divide the width exactly. The remainder is spread
+  // one pixel at a time across the strip, so it fills its space with even gaps
+  // instead of stopping short or being clipped.
+  const spare = Math.max(0, Math.floor(width) - (layout.count * layout.cell - layout.gap));
   const days = monitor.days.slice(-layout.count);
-  for (const day of days) {
+  days.forEach((day, index) => {
     const bar = el('div', `bar bar-${day.state}`);
+    const extra =
+      Math.floor(((index + 1) * spare) / layout.count) - Math.floor((index * spare) / layout.count);
+    if (extra) bar.style.flex = `0 0 ${base + extra}px`;
     bar.addEventListener('mouseenter', (event) => {
       const ratio = day.checks ? ((day.checks - day.down) / day.checks) * 100 : null;
       showTooltip(event, [
@@ -135,10 +137,15 @@ function renderBars(monitor, width = monitorsEl.clientWidth - 40, minBar = 3, ga
     });
     bar.addEventListener('mouseleave', hideTooltip);
     bars.append(bar);
-  }
+  });
+  return days.length;
+}
 
+function renderBars(monitor, width = monitorsEl.clientWidth - 40, minBar = 3, gap = 2, lock = 0) {
+  const bars = el('div', 'bars');
+  const shown = fillBars(bars, monitor, width, minBar, gap, lock);
   const scale = el('div', 'scale');
-  scale.append(el('span', null, `${days.length} days ago`), el('span'), el('span', null, 'Today'));
+  scale.append(el('span', null, `${shown} days ago`), el('span'), el('span', null, 'Today'));
   return [bars, scale];
 }
 
@@ -475,7 +482,13 @@ function renderCard(monitor) {
   right.append(el('div', 'card-uptime', formatUptime(monitor.uptime[rangeKey()])));
   right.append(el('div', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status));
   head.append(left, right);
-  card.append(head, ...renderBars(monitor));
+
+  const bars = el('div', 'bars');
+  const scale = el('div', 'scale');
+  const label = el('span');
+  scale.append(label, el('span'), el('span', null, 'Today'));
+  card.append(head, bars, scale);
+  registerStrip(bars, monitor, 2, label);
 
   const footer = el('div', 'card-footer');
   const more = el('span', 'card-more');
@@ -530,16 +543,33 @@ function summarize(monitors) {
   return parts.join(' · ');
 }
 
+// Strips are filled once the page has been laid out, because how much room
+// they get depends on what sits beside them. Guessing at it is what left them
+// clipped in a compact row and overflowing a card.
+const pendingStrips = [];
+
+function registerStrip(bars, monitor, gap, label = null) {
+  pendingStrips.push({ bars, monitor, gap, label });
+}
+
+function fillPendingStrips() {
+  for (const { bars, monitor, gap, label } of pendingStrips.splice(0)) {
+    const shown = fillBars(bars, monitor, bars.clientWidth, 3, gap);
+    if (label) label.textContent = `${shown} days ago`;
+  }
+}
+
 function renderCompactRow(monitor) {
   const row = el('div', 'compact-row');
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
   row.append(el('span', 'dot'), el('span', 'compact-name', monitor.name));
 
-  // The row is narrower than a card, so the strip is sized for what is left
-  // once the name, status and figure have taken their share.
-  const [bars] = renderBars(monitor, Math.max(120, monitorsEl.clientWidth * 0.45), 3, 1);
-  bars.classList.add('bars-compact');
+  // How much room the strip gets depends on the name, status and figure beside
+  // it, which is only known once the row is laid out. It is filled afterwards
+  // rather than guessed at, which is what used to leave it clipped.
+  const bars = el('div', 'bars bars-compact');
   row.append(bars);
+  registerStrip(bars, monitor, 1);
 
   row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
   row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime[rangeKey()])));
@@ -583,6 +613,7 @@ function renderMonitors() {
     }
     renderGroup(group, monitors);
   }
+  fillPendingStrips();
 }
 
 function computeOverall(monitors) {
