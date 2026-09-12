@@ -176,7 +176,7 @@ which is what happens when no group is configured at all.
    issue on recovery, and writes a snapshot of recent incidents.
 3. The history is committed back to the branch.
 4. If anything the page shows changed, the Pages workflow deploys
-   immediately; otherwise the site rebuilds on its own 30 minute schedule.
+   immediately; otherwise the site rebuilds once a day.
    That covers a monitor changing state and an incident issue being opened,
    edited, relabelled or closed, so planned maintenance appears without
    waiting. The workflow also runs on `issues` events for that reason.
@@ -191,16 +191,17 @@ history/raw/<slug>.csv     every check of the last 7 days (response time chart)
 history/daily/<slug>.csv   one aggregated row per day, kept indefinitely
 history/state.json         current status and open issue per monitor
 history/incidents.json     snapshot of recent incident issues
-history/live.json          current status and incidents, read by the page itself
+history/live.json          current status, uptime and incidents, read by the page itself
 ```
 
 The build is a snapshot, so the deployed page also fetches `history/live.json`
 from `raw.githubusercontent.com` on load, every minute, and whenever the tab
-returns to the foreground. Status, response times and incidents therefore
-refresh without a deployment, and a tab left open during an outage keeps up.
-The bars come from the build and only change when the site is rebuilt.
-GitHub caches raw files for five minutes, which is the practical limit on how
-fresh this is. If the fetch fails the page keeps its build time data.
+returns to the foreground. Status, uptime figures, incidents and the newest few
+bars therefore refresh without a deployment, and a tab left open during an
+outage keeps up. Only the rest of the 90 day history and the response time
+chart wait for the next build, which is why a daily one is enough. GitHub
+caches raw files for five minutes, which is the practical limit on how fresh
+this is. If the fetch fails the page keeps its build time data.
 
 Issues labelled with the incident label show up on the page, so you can also
 open one by hand for planned work: the **Planned maintenance** issue template
@@ -241,9 +242,9 @@ runs the same command on every push that touches `scripts/` or `test/`.
   machine you control: [docs/external-scheduler.md](docs/external-scheduler.md).
 - Actions minutes are free on public repositories. On a private repository
   every job is rounded up to a whole minute, so the cost follows the number of
-  runs, not their duration: the default schedule is roughly 336 job-minutes a
-  day. Lengthen the two cron expressions to cut that, or keep the repository
-  public and define sensitive monitors as secrets.
+  runs, not their duration: the default schedule is roughly 290 job-minutes a
+  day, nearly all of it the five minute check. Lengthen that cron to cut it, or
+  keep the repository public and define sensitive monitors as secrets.
 - The workflows use the Node.js that ships with the runner image, currently
   22.x, so there is no toolchain setup step.
 - Uptime percentages count degraded checks as up, in the figures and in the

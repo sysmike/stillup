@@ -636,6 +636,20 @@ function computeOverall(monitors) {
   return active.length ? 'up' : 'none';
 }
 
+// live.json carries only the newest day rows. They replace the ones the build
+// shipped, a day that turned over since is appended, and the window keeps its
+// length, so the strip stays current between deployments.
+function mergeDays(days, updates) {
+  const merged = days.slice();
+  for (const day of updates) {
+    const index = merged.findIndex((entry) => entry.date === day.date);
+    if (index === -1) merged.push(day);
+    else merged[index] = day;
+  }
+  merged.sort((a, b) => a.date.localeCompare(b.date));
+  return merged.slice(-data.days);
+}
+
 // The build is a snapshot. live.json is committed by every check run and served
 // straight from the repository, so an open tab keeps up without a deployment.
 // Any failure here leaves the page on its build time data.
@@ -649,7 +663,10 @@ async function refresh() {
 
     for (const monitor of data.monitors) {
       const update = live.monitors?.[monitor.slug];
-      if (update) Object.assign(monitor, update);
+      if (!update) continue;
+      const { days, ...fields } = update;
+      Object.assign(monitor, fields);
+      if (days) monitor.days = mergeDays(monitor.days, days);
     }
     data.incidents = live.incidents ?? data.incidents;
     data.generatedAt = live.generatedAt;

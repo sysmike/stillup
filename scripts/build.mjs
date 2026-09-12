@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { RAW_DAYS, readDaily, readRaw } from './lib/history.mjs';
+import { dayKeys, dayViews, uptimeWindows } from './lib/summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = join(ROOT, '_site');
@@ -14,30 +15,6 @@ const DAYS = 90;
 function readJson(file, fallback) {
   const path = join(ROOT, file);
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
-}
-
-function dayKeys(count) {
-  const today = new Date();
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(today);
-    date.setUTCDate(date.getUTCDate() - (count - 1 - index));
-    return date.toISOString().slice(0, 10);
-  });
-}
-
-function classify(day) {
-  if (!day || day.checks === 0) return 'none';
-  if (day.down >= day.checks) return 'down';
-  if (day.down > 0) return 'partial';
-  if (day.degraded > 0) return 'degraded';
-  return 'up';
-}
-
-function uptime(days) {
-  const checks = days.reduce((total, day) => total + day.checks, 0);
-  if (checks === 0) return null;
-  const ok = days.reduce((total, day) => total + day.up + day.degraded, 0);
-  return Math.round((ok / checks) * 10000) / 100;
 }
 
 const { site, groups, monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
@@ -51,22 +28,10 @@ cpSync(join(ROOT, 'site'), OUT, { recursive: true });
 
 const summaryMonitors = monitors.map((monitor) => {
   const daily = readDaily(monitor.slug);
-  const byDate = new Map(daily.map((day) => [day.date, day]));
-  const days = keys.map((date) => {
-    const day = byDate.get(date);
-    return {
-      date,
-      state: classify(day),
-      checks: day?.checks ?? 0,
-      down: day?.down ?? 0,
-      degraded: day?.degraded ?? 0,
-      avg: day?.avg ?? 0,
-    };
-  });
+  const days = dayViews(daily, keys);
 
   const raw = readRaw(monitor.slug);
   const latest = raw.at(-1);
-  const window = (count) => daily.filter((day) => keys.slice(-count).includes(day.date));
   const measured = raw.filter((entry) => entry.ms > 0);
 
   writeFileSync(
@@ -93,12 +58,7 @@ const summaryMonitors = monitors.map((monitor) => {
     avgMs: measured.length
       ? Math.round(measured.reduce((total, entry) => total + entry.ms, 0) / measured.length)
       : null,
-    uptime: {
-      day: uptime(window(1)),
-      week: uptime(window(7)),
-      month: uptime(window(30)),
-      quarter: uptime(window(DAYS)),
-    },
+    uptime: uptimeWindows(daily, keys, DAYS),
     days,
   };
 });

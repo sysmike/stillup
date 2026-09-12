@@ -8,6 +8,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { api, ensureLabel, repo } from './lib/github.mjs';
+import { dayKeys, liveMonitor } from './lib/summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const STATE_FILE = `${ROOT}history/state.json`;
@@ -163,7 +164,10 @@ writeFileSync(INCIDENTS_FILE, `${snapshot}\n`);
 
 // The deployed page fetches this file straight from the repository, so the
 // numbers refresh between deployments instead of freezing at build time. It
-// holds only what changes every run; the 90 day history stays in the build.
+// holds what moves every run: status, the uptime figures and the newest day
+// rows. The rest of the history, and the response time chart, come from the
+// build.
+const keys = dayKeys(90);
 writeFileSync(
   LIVE_FILE,
   `${JSON.stringify(
@@ -178,6 +182,7 @@ writeFileSync(
             lastMs: result.ms,
             lastCode: result.code,
             since: state[result.slug]?.since ?? null,
+            ...liveMonitor(result.slug, keys),
           },
         ]),
       ),

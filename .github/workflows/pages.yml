@@ -3,8 +3,12 @@ name: Pages
 on:
   workflow_call:
   workflow_dispatch:
+  # The page refreshes status, uptime and the newest bars from history/live.json
+  # on its own, and an outage deploys immediately from the Uptime workflow. This
+  # rebuild is the floor: it refreshes the whole 90 day history and the response
+  # time chart once a day.
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '0 1 * * *'
   push:
     branches: [main]
     paths:
