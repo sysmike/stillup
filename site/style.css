@@ -373,16 +373,20 @@ main.shell {
 /* A ring around the dot that breathes in and out rather than expanding and
    vanishing: at any moment there is something to see, so it reads as a slow
    pulse instead of a blink. Only for readers who have not asked for less
-   motion. */
+   motion.
+
+   The ring is drawn as a gradient with soft edges, which scales without the
+   shimmer a hard edge shows at this size, and the timing is sinusoidal so it
+   turns around at the ends instead of stopping dead. */
 @keyframes status-pulse {
   0%,
   100% {
-    transform: scale(1.2);
+    transform: scale(1);
     opacity: 0.55;
   }
   50% {
-    transform: scale(1.95);
-    opacity: 0.1;
+    transform: scale(1.35);
+    opacity: 0.12;
   }
 }
 
@@ -391,10 +395,18 @@ main.shell {
   .banner-dot::after {
     content: '';
     position: absolute;
-    inset: 0;
+    /* Wider than the dot, so the band of the gradient falls outside it rather
+       than on top of it, where it would be invisible. */
+    inset: -5px;
     border-radius: 50%;
-    background: var(--status, var(--none));
-    animation: status-pulse 3.2s ease-in-out infinite;
+    background: radial-gradient(
+      circle closest-side,
+      transparent 46%,
+      var(--status, var(--none)) 64%,
+      transparent 92%
+    );
+    will-change: transform, opacity;
+    animation: status-pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
 
