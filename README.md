@@ -72,6 +72,7 @@ MONITOR_WEBSITE   https://example.com
 MONITOR_API       {"name":"Public API","url":"https://api.example.com/health","keyword":"ok","group":"Core"}
 MONITOR_SMTP      {"name":"Mail","url":"tcp://mail.example.com:25","keyword":"220"}
 MONITOR_GATEWAY   {"name":"Gateway","url":"ping://gw.example.com"}
+MONITOR_OFFICE    {"name":"Office WiFi","url":"dummy://up"}
 ```
 
 An `http` or `https` URL is requested over HTTP. A `tcp://host:port` URL is
@@ -87,6 +88,11 @@ A `ping://host` URL sends one ICMP echo through the system `ping` binary and
 measures the round trip. It needs `ping` on the runner, ignores `keyword`
 along with the HTTP options, and is also not offered as a link.
 
+A `dummy://` URL is not checked at all and is always reported up, for a
+service whose state is followed somewhere else, or to hold a place on the page.
+Everything else about the monitor works as usual, but nothing is measured, so
+it has no response times.
+
 **ICMP does not work on GitHub-hosted runners.** They are Azure virtual
 machines, and Azure blocks ICMP, so a ping monitor reports `socket: Operation
 not permitted` or `no reply` no matter how healthy the host is. Use ping only
@@ -97,7 +103,7 @@ works for you, anything else means it does not.
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `url` | required | `https://…` to request, `tcp://host:port` to connect to, or `ping://host` to ping |
+| `url` | required | `https://…` to request, `tcp://host:port` to connect to, `ping://host` to ping, or `dummy://` for a monitor that is always up |
 | `name` | derived from the variable name | Display name |
 | `method` | `GET` | HTTP method |
 | `headers` | `{}` | Request headers |

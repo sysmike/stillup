@@ -84,7 +84,11 @@ async function httpRequest(monitor) {
   }
 }
 
-const requests = { tcp: tcpRequest, ping: pingRequest, http: httpRequest };
+// Always up, nothing requested: for a service whose state is followed
+// elsewhere, or to see the page with something in it.
+const dummyRequest = async () => ({ code: 0, ms: 0, text: '' });
+
+const requests = { tcp: tcpRequest, ping: pingRequest, dummy: dummyRequest, http: httpRequest };
 const request = (monitor) => requests[monitor.type](monitor);
 
 async function check(monitor) {
@@ -92,6 +96,9 @@ async function check(monitor) {
   for (let attempt = 0; attempt <= monitor.retries; attempt += 1) {
     try {
       const { code, ms, text } = await request(monitor);
+      if (monitor.type === 'dummy') {
+        return { status: 'up', code, ms, error: null };
+      }
       if (monitor.type === 'http' && !statusMatches(code, monitor.expectedStatus)) {
         last = { status: 'down', code, ms, error: `unexpected status ${code}` };
       } else if (monitor.keyword && !text.includes(monitor.keyword)) {

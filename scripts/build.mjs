@@ -88,7 +88,7 @@ const summaryMonitors = monitors.map((monitor) => {
     status: state[monitor.slug]?.status || latest?.status || 'none',
     since: state[monitor.slug]?.since || null,
     lastCheck: latest?.timestamp || null,
-    lastMs: latest?.ms ?? null,
+    lastMs: latest?.ms || null, // 0 means nothing was measured, as for a dummy
     lastCode: latest?.code ?? null,
     avgMs: measured.length
       ? Math.round(measured.reduce((total, entry) => total + entry.ms, 0) / measured.length)
