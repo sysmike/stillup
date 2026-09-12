@@ -17,6 +17,26 @@ const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 
 const marker = (slug) => `<!-- monitor:${slug} -->`;
 
+// Issues this workflow opens name their monitor in a marker. One filed through
+// the maintenance template names them in prose instead, under a heading the
+// form generates, so both are resolved to slugs for the page to filter on.
+function affectedMonitors(body) {
+  const found = new Set();
+  const tagged = (body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1];
+  if (tagged) found.add(tagged);
+
+  const section = (body || '').match(/###\s*Affected monitors\s*\n+([^\n#]+)/i)?.[1];
+  for (const token of (section || '').split(/[,;]/)) {
+    const name = token.trim().toLowerCase();
+    if (!name || name === '_no response_') continue;
+    const match = monitors.find(
+      (monitor) => monitor.slug === name || monitor.name.toLowerCase() === name,
+    );
+    if (match) found.add(match.slug);
+  }
+  return [...found];
+}
+
 function readJson(file, fallback) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : fallback;
 }
@@ -30,7 +50,7 @@ function duration(from, to) {
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
 
-const { incidents: settings } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
+const { incidents: settings, monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
 const results = readJson(RESULTS_FILE, []);
 const state = readJson(STATE_FILE, {});
 let changed = false;
@@ -124,6 +144,7 @@ const snapshot = JSON.stringify(
       closedAt: issue.closed_at,
       labels: issue.labels.map((label) => label.name),
       monitor: (issue.body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1] || null,
+      monitors: affectedMonitors(issue.body),
       maintenance: issue.labels.some((label) => label.name === 'maintenance'),
     })),
   null,

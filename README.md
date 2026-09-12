@@ -76,12 +76,12 @@ completes, and the measured time is the handshake itself. With `keyword` set,
 the check also waits for the first chunk the server sends and matches it
 against that string, which covers banner protocols such as SMTP, SSH or IMAP.
 `method`, `headers`, `body`, `expectedStatus` and `followRedirects` do not
-apply to a TCP monitor, and its address is not used as the card link — set
-`link` if the card should point somewhere.
+apply to a TCP monitor, and its address is not offered as a link — set `link`
+if the monitor should point somewhere a browser can follow.
 
 A `ping://host` URL sends one ICMP echo through the system `ping` binary and
 measures the round trip. It needs `ping` on the runner, ignores `keyword`
-along with the HTTP options, and is also not used as a card link.
+along with the HTTP options, and is also not offered as a link.
 
 **ICMP does not work on GitHub-hosted runners.** They are Azure virtual
 machines, and Azure blocks ICMP, so a ping monitor reports `socket: Operation
@@ -154,6 +154,19 @@ GROUP_PUBLIC     expanded
 `compact`, `always`, `true` and `yes` mean the same thing, as do `expanded`,
 `never`, `false` and `no`. `auto` falls back to the site rule.
 
+
+## Monitor details
+
+Clicking a monitor, in either view, opens its details: current status, uptime
+over today, 7 and 30 days, the day by day history, the response time of the
+last 7 days, and the incidents that refer to it. The monitored URL is a link
+in there rather than on the card, so clicking a monitor shows its history
+instead of navigating away.
+
+Each monitor has its own address, `…/#/<slug>`, which opens the page with that
+monitor already in front. Incidents are matched by the marker in the issues
+this workflow opens, and by the **Affected monitors** field of the maintenance
+template, where a monitor's name or slug is resolved to the right monitor.
 
 ## How it works
 

@@ -79,14 +79,13 @@ const hideTooltip = () => {
 const rangeKey = () => (range === 7 ? 'week' : range === 30 ? 'month' : 'quarter');
 
 // Bars stay readable by dropping the oldest days when the viewport is narrow.
-function visibleDays() {
-  const width = monitorsEl.clientWidth - 40;
+function visibleDays(width = monitorsEl.clientWidth - 40) {
   return Math.max(7, Math.min(range, Math.floor(width / 5)));
 }
 
-function renderBars(monitor) {
+function renderBars(monitor, width) {
   const bars = el('div', 'bars');
-  const days = monitor.days.slice(-visibleDays());
+  const days = monitor.days.slice(-visibleDays(width));
   for (const day of days) {
     const bar = el('div', `bar bar-${day.state}`);
     bar.addEventListener('mouseenter', (event) => {
@@ -149,6 +148,160 @@ function renderChart(container, payload) {
   container.append(legend);
 }
 
+const dialog = document.getElementById('detail');
+const detailBody = document.getElementById('detail-body');
+const chartCache = new Map();
+
+// Cards and compact rows are click targets rather than links: on a status page
+// the interesting destination is the history, not the monitored site.
+function makeOpener(element, monitor) {
+  const open = () => {
+    const hash = `#/${monitor.slug}`;
+    if (location.hash === hash) openDetail(monitor.slug);
+    else location.hash = hash;
+  };
+  element.tabIndex = 0;
+  element.setAttribute('role', 'button');
+  element.addEventListener('click', open);
+  element.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      open();
+    }
+  });
+}
+
+function figure(value, label) {
+  const box = el('div', 'figure');
+  box.append(el('div', 'figure-value', value), el('div', 'figure-label', label));
+  return box;
+}
+
+function renderIncidentItem(incident) {
+  const item = el('li');
+  const link = el('a', null, incident.title);
+  link.href = incident.url;
+  link.rel = 'noopener';
+  item.append(link);
+
+  const meta = el('div', 'incident-meta');
+  const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
+  meta.append(el('span', `tag tag-${state}`, state));
+  meta.append(
+    el(
+      'span',
+      null,
+      incident.state === 'open'
+        ? `${incident.maintenance ? 'opened' : 'started'} ${relative(incident.createdAt)}`
+        : `${formatDate(incident.createdAt)} · ${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)}`,
+    ),
+  );
+  item.append(meta);
+  return item;
+}
+
+async function openDetail(slug) {
+  const monitor = data.monitors.find((candidate) => candidate.slug === slug);
+  if (!monitor) return;
+
+  detailBody.replaceChildren();
+  const head = el('div', 'detail-head');
+  head.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
+  head.append(el('span', 'dot'), el('span', null, monitor.name));
+  detailBody.append(head);
+
+  const meta = el('p', 'detail-meta');
+  meta.append(el('span', null, STATUS_TEXT[monitor.status] || monitor.status));
+  if (monitor.since) meta.append(el('span', null, ` since ${formatDate(monitor.since)}`));
+  if (monitor.group) meta.append(el('span', null, ` · ${monitor.group}`));
+  if (monitor.url) {
+    meta.append(el('span', null, ' · '));
+    const link = el('a', null, monitor.url.replace(/^https?:\/\//, ''));
+    link.href = monitor.url;
+    link.rel = 'noopener';
+    meta.append(link);
+  }
+  detailBody.append(meta);
+  if (monitor.description) detailBody.append(el('p', 'detail-meta', monitor.description));
+
+  const figures = el('div', 'detail-figures');
+  figures.append(
+    figure(formatUptime(monitor.uptime.day), 'Today'),
+    figure(formatUptime(monitor.uptime.week), '7 days'),
+    figure(formatUptime(monitor.uptime.month), '30 days'),
+    figure(monitor.lastMs === null ? '—' : `${monitor.lastMs}ms`, 'Last check'),
+  );
+  detailBody.append(figures);
+
+  const history = el('div', 'detail-section');
+  history.append(el('h3', 'panel-title', `${data.days} day history`));
+  detailBody.append(history);
+
+  const chartSection = el('div', 'detail-section');
+  chartSection.append(el('h3', 'panel-title', 'Response time'));
+  const chart = el('div', 'chart');
+  chart.append(el('p', 'card-sub', 'Loading…'));
+  chartSection.append(chart);
+  detailBody.append(chartSection);
+
+  const related = (data.incidents || []).filter(
+    (incident) => incident.monitors?.includes(slug) || incident.monitor === slug,
+  );
+  const incidentSection = el('div', 'detail-section');
+  incidentSection.append(el('h3', 'panel-title', 'Incidents'));
+  if (related.length) {
+    const list = el('ul', 'incident-list');
+    for (const incident of related) list.append(renderIncidentItem(incident));
+    incidentSection.append(list);
+  } else {
+    incidentSection.append(el('p', 'detail-empty', 'No incidents recorded for this monitor.'));
+  }
+  detailBody.append(incidentSection);
+
+  if (!dialog.open) dialog.showModal();
+  // Bars need the dialog's width, which only exists once it is open.
+  history.append(...renderBars(monitor, detailBody.clientWidth));
+
+  try {
+    if (!chartCache.has(slug)) {
+      const response = await fetch(`api/monitor/${slug}.json`, { cache: 'no-cache' });
+      chartCache.set(slug, await response.json());
+    }
+    renderChart(chart, chartCache.get(slug));
+  } catch {
+    chart.replaceChildren(el('p', 'card-sub', 'Could not load response times.'));
+  }
+}
+
+function syncDialog() {
+  const slug = location.hash.startsWith('#/') ? decodeURIComponent(location.hash.slice(2)) : '';
+  if (!slug) {
+    if (dialog.open) dialog.close();
+    return;
+  }
+  openDetail(slug);
+}
+
+// Closing is driven explicitly rather than from the dialog's own close event,
+// which not every engine delivers when the dialog is closed from script.
+function closeDetail() {
+  if (dialog.open) dialog.close();
+  if (location.hash.startsWith('#/')) {
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+}
+
+dialog.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeDetail();
+});
+dialog.addEventListener('close', closeDetail);
+dialog.addEventListener('click', (event) => {
+  if (event.target === dialog) closeDetail();
+});
+document.getElementById('detail-close').addEventListener('click', closeDetail);
+addEventListener('hashchange', syncDialog);
+
 function renderCard(monitor) {
   const card = el('div', 'card');
   card.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
@@ -156,15 +309,7 @@ function renderCard(monitor) {
   const head = el('div', 'card-head');
   const left = el('div');
   const name = el('div', 'card-name');
-  name.append(el('span', 'dot'));
-  if (monitor.url) {
-    const link = el('a', null, monitor.name);
-    link.href = monitor.url;
-    link.rel = 'noopener';
-    name.append(link);
-  } else {
-    name.append(el('span', null, monitor.name));
-  }
+  name.append(el('span', 'dot'), el('span', null, monitor.name));
   left.append(name);
   if (monitor.description) left.append(el('p', 'card-desc', monitor.description));
 
@@ -175,38 +320,16 @@ function renderCard(monitor) {
   card.append(head, ...renderBars(monitor));
 
   const footer = el('div', 'card-footer');
-  const toggle = el('button', 'toggle-chart');
-  toggle.type = 'button';
-  toggle.setAttribute('aria-expanded', 'false');
-  toggle.append(el('span', null, 'Response time'));
+  const more = el('span', 'card-more');
+  more.append(el('span', null, 'Details'));
   const caret = svg('svg', { viewBox: '0 0 24 24' });
-  caret.append(svg('path', { d: 'M6 9l6 6 6-6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
-  toggle.append(caret);
+  caret.append(svg('path', { d: 'M9 6l6 6-6 6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  more.append(caret);
 
   const meta = monitor.lastMs !== null ? `${monitor.lastMs}ms · checked ${relative(monitor.lastCheck)}` : 'No checks yet';
-  footer.append(toggle, el('span', null, meta));
+  footer.append(more, el('span', null, meta));
   card.append(footer);
-
-  const chart = el('div', 'chart');
-  chart.hidden = true;
-  card.append(chart);
-
-  toggle.addEventListener('click', async () => {
-    const open = toggle.getAttribute('aria-expanded') === 'true';
-    toggle.setAttribute('aria-expanded', String(!open));
-    chart.hidden = open;
-    if (!open && !chart.dataset.loaded) {
-      chart.dataset.loaded = '1';
-      chart.append(el('p', 'card-sub', 'Loading…'));
-      try {
-        const response = await fetch(`api/monitor/${monitor.slug}.json`, { cache: 'no-cache' });
-        renderChart(chart, await response.json());
-      } catch {
-        chart.replaceChildren(el('p', 'card-sub', 'Could not load response times.'));
-      }
-    }
-  });
-
+  makeOpener(card, monitor);
   return card;
 }
 
@@ -275,18 +398,10 @@ function renderCompactRow(monitor) {
   row.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
   row.append(el('span', 'dot'));
 
-  const name = el('span', 'compact-name');
-  if (monitor.url) {
-    const link = el('a', null, monitor.name);
-    link.href = monitor.url;
-    link.rel = 'noopener';
-    name.append(link);
-  } else {
-    name.append(el('span', null, monitor.name));
-  }
-  row.append(name);
+  row.append(el('span', 'compact-name', monitor.name));
   row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
   row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime[rangeKey()])));
+  makeOpener(row, monitor);
   return row;
 }
 
@@ -428,6 +543,7 @@ try {
   data = await response.json();
   if (!stored && data.site.theme !== 'auto') root.dataset.theme = data.site.theme;
   render();
+  syncDialog();
   setInterval(() => {
     document.getElementById('updated').textContent = `Checked ${relative(data.generatedAt)}`;
   }, 30000);
