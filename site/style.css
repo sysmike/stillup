@@ -138,16 +138,16 @@ body {
 }
 
 main.shell {
-  padding-top: 36px;
+  /* Matches the gap a group heading keeps below the banner, so the banner
+     sits centred between the topbar and the first group. */
+  padding-top: 18px;
   padding-bottom: 40px;
 }
 
 .banner {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 14px;
-  text-align: center;
   padding: 18px 20px;
   border: 1px solid var(--border);
   border-left: 4px solid var(--status, var(--none));
