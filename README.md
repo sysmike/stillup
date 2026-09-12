@@ -124,6 +124,19 @@ name, the display name, the group and description, and the status, uptime and
 response times. Set `link` if the card should point somewhere anyway. Adding
 `"private": true` to a monitor defined as a variable has the same effect.
 
+## Monitor details
+
+Clicking a monitor, in either view, opens its details: current status, uptime
+over today, 7 and 30 days, the day by day history, the response time of the
+last 7 days, and the incidents that refer to it. The monitored URL is a link
+in there rather than on the card, so clicking a monitor shows its history
+instead of navigating away.
+
+Each monitor has its own address, `…/#/<slug>`, which opens the page with that
+monitor already in front. Incidents are matched by the marker in the issues
+this workflow opens, and by the **Affected monitors** field of the maintenance
+template, where a monitor's name or slug is resolved to the right monitor.
+
 ## Groups
 
 A monitor with a `group` is listed under that heading. A collapsed group is
@@ -153,20 +166,6 @@ GROUP_PUBLIC     expanded
 
 `compact`, `always`, `true` and `yes` mean the same thing, as do `expanded`,
 `never`, `false` and `no`. `auto` falls back to the site rule.
-
-
-## Monitor details
-
-Clicking a monitor, in either view, opens its details: current status, uptime
-over today, 7 and 30 days, the day by day history, the response time of the
-last 7 days, and the incidents that refer to it. The monitored URL is a link
-in there rather than on the card, so clicking a monitor shows its history
-instead of navigating away.
-
-Each monitor has its own address, `…/#/<slug>`, which opens the page with that
-monitor already in front. Incidents are matched by the marker in the issues
-this workflow opens, and by the **Affected monitors** field of the maintenance
-template, where a monitor's name or slug is resolved to the right monitor.
 
 ## How it works
 
