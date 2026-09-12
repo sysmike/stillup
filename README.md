@@ -4,11 +4,13 @@ Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime) that
 Action, history is committed to this repository, outages open and close GitHub
 issues, and the status page is published with GitHub Pages.
 
-![Status page](.screenshots/dark.png)
-
-| Light | Response time | Mobile |
-| --- | --- | --- |
-| [![Light theme](.screenshots/light.png)](.screenshots/light.png) | [![Response time chart](.screenshots/response-time.png)](.screenshots/response-time.png) | [![Mobile](.screenshots/mobile.png)](.screenshots/mobile.png) |
+<p>
+  <img src=".screenshots/dark.png" width="49%" alt="Status page in the dark theme">
+  <img src=".screenshots/light.png" width="49%" alt="Status page in the light theme">
+  <img src=".screenshots/detail.png" width="49%" alt="Monitor details with history, response time and incidents">
+  <img src=".screenshots/incident.png" width="49%" alt="Incident read on the status page itself">
+  <img src=".screenshots/mobile.png" width="23%" alt="Status page on a phone">
+</p>
 
 ## Setup
 
@@ -136,6 +138,14 @@ Each monitor has its own address, `…/#/<slug>`, which opens the page with that
 monitor already in front. Incidents are matched by the marker in the issues
 this workflow opens, and by the **Affected monitors** field of the maintenance
 template, where a monitor's name or slug is resolved to the right monitor.
+
+Clicking an incident, in the list at the bottom of the page or in a monitor's
+details, opens the incident itself at `…/#/incident/<number>`: its state, how
+long it lasted, the monitors it affects as buttons that lead to them, and the
+description from the issue. Nobody is sent to GitHub to read it, though a link
+to the issue sits at the end for anyone who wants to comment. Issue text is
+written by whoever filed it, so it is rendered as text: headings, lists, bold,
+code and http links survive, and markup does not.
 
 ## Groups
 

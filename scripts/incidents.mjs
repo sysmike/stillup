@@ -145,6 +145,11 @@ const snapshot = JSON.stringify(
       labels: issue.labels.map((label) => label.name),
       monitor: (issue.body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1] || null,
       monitors: affectedMonitors(issue.body),
+      // The page renders this itself so a reader never has to leave for GitHub.
+      body: (issue.body || '')
+        .replace(/<!-- monitor:[a-z0-9-]+ -->/g, '')
+        .trim()
+        .slice(0, 2000),
       maintenance: issue.labels.some((label) => label.name === 'maintenance'),
     })),
   null,

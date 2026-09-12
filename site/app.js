@@ -54,6 +54,14 @@ function relative(iso) {
   return `${rounded} ${unit}${rounded === 1 ? '' : 's'} ago`;
 }
 
+function elapsed(from, to) {
+  const minutes = Math.max(1, Math.round((new Date(to) - new Date(from)) / 60000));
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -184,10 +192,15 @@ function figure(value, label) {
 
 function renderIncidentItem(incident) {
   const item = el('li');
-  const link = el('a', null, incident.title);
-  link.href = incident.url;
-  link.rel = 'noopener';
-  item.append(link);
+  const open = () => {
+    const hash = `#/incident/${incident.number}`;
+    if (location.hash === hash) openIncident(incident.number);
+    else location.hash = hash;
+  };
+  const title = el('button', 'incident-title', incident.title);
+  title.type = 'button';
+  title.addEventListener('click', open);
+  item.append(title);
 
   const meta = el('div', 'incident-meta');
   const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
@@ -203,6 +216,119 @@ function renderIncidentItem(incident) {
   );
   item.append(meta);
   return item;
+}
+
+// Issue bodies are written by whoever filed the issue, so they are never
+// inserted as markup. This walks the few constructs the templates produce and
+// builds text nodes for everything else.
+function inline(target, text) {
+  const pattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+  let last = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index > last) target.append(text.slice(last, match.index));
+    const [, label, href, bare, bold, code] = match;
+    if (href) {
+      const link = el('a', null, label);
+      link.href = href;
+      link.rel = 'noopener';
+      target.append(link);
+    } else if (bare) {
+      const link = el('a', null, bare.replace(/^https?:\/\//, ''));
+      link.href = bare;
+      link.rel = 'noopener';
+      target.append(link);
+    } else if (bold) {
+      target.append(el('strong', null, bold));
+    } else {
+      target.append(el('code', null, code));
+    }
+    last = match.index + match[0].length;
+  }
+  target.append(text.slice(last));
+}
+
+function renderBody(container, body) {
+  let list = null;
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    if (!line) {
+      list = null;
+      continue;
+    }
+    if (/^#{1,6}\s/.test(line)) {
+      list = null;
+      container.append(el('h4', 'body-heading', line.replace(/^#{1,6}\s*/, '')));
+      continue;
+    }
+    if (/^[-*]\s/.test(line)) {
+      if (!list) container.append((list = el('ul', 'body-list')));
+      const item = el('li');
+      inline(item, line.replace(/^[-*]\s*/, ''));
+      list.append(item);
+      continue;
+    }
+    list = null;
+    const paragraph = el('p', 'body-text');
+    inline(paragraph, line);
+    container.append(paragraph);
+  }
+}
+
+function openIncident(number) {
+  const incident = (data.incidents || []).find((candidate) => candidate.number === Number(number));
+  if (!incident) return;
+
+  detailBody.replaceChildren();
+  const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
+  const head = el('div', 'detail-head');
+  head.append(el('span', null, incident.title));
+  detailBody.append(head);
+
+  const meta = el('p', 'detail-meta');
+  meta.append(el('span', `tag tag-${state}`, state));
+  meta.append(
+    el(
+      'span',
+      null,
+      ` ${incident.maintenance ? 'opened' : 'started'} ${formatDate(incident.createdAt)}` +
+        (incident.closedAt
+          ? ` · ${incident.maintenance ? 'completed' : 'resolved'} ${formatDate(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`
+          : ` · ${relative(incident.createdAt)}`),
+    ),
+  );
+  detailBody.append(meta);
+
+  const affected = (incident.monitors || [])
+    .map((slug) => data.monitors.find((monitor) => monitor.slug === slug))
+    .filter(Boolean);
+  if (affected.length) {
+    const chips = el('p', 'chips');
+    for (const monitor of affected) {
+      const chip = el('button', 'chip', monitor.name);
+      chip.type = 'button';
+      chip.style.setProperty('--status', `var(--${monitor.status === 'none' ? 'none' : monitor.status})`);
+      chip.addEventListener('click', () => {
+        location.hash = `#/${monitor.slug}`;
+      });
+      chips.append(chip);
+    }
+    detailBody.append(chips);
+  }
+
+  const section = el('div', 'detail-section');
+  if (incident.body) renderBody(section, incident.body);
+  else section.append(el('p', 'detail-empty', 'No description was given.'));
+  detailBody.append(section);
+
+  const footer = el('p', 'detail-meta detail-source');
+  const link = el('a', null, `Issue #${incident.number} on GitHub`);
+  link.href = incident.url;
+  link.rel = 'noopener';
+  link.target = '_blank';
+  footer.append(link);
+  detailBody.append(footer);
+
+  if (!dialog.open) dialog.showModal();
 }
 
 async function openDetail(slug) {
@@ -279,12 +405,14 @@ async function openDetail(slug) {
 }
 
 function syncDialog() {
-  const slug = location.hash.startsWith('#/') ? decodeURIComponent(location.hash.slice(2)) : '';
-  if (!slug) {
+  const route = location.hash.startsWith('#/') ? decodeURIComponent(location.hash.slice(2)) : '';
+  if (!route) {
     if (dialog.open) dialog.close();
     return;
   }
-  openDetail(slug);
+  const incident = route.match(/^incident\/(\d+)$/);
+  if (incident) openIncident(incident[1]);
+  else openDetail(route);
 }
 
 // Closing is driven explicitly rather than from the dialog's own close event,
@@ -351,29 +479,7 @@ function renderIncidents(incidents) {
   }
 
   list.replaceChildren();
-  for (const incident of recent.slice(0, 10)) {
-    const item = el('li');
-    const link = el('a', null, incident.title);
-    link.href = incident.url;
-    link.rel = 'noopener';
-    item.append(link);
-
-    const meta = el('div', 'incident-meta');
-    const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
-    meta.append(el('span', `tag tag-${state}`, state));
-    // Maintenance is announced ahead of time, so it is never "started".
-    meta.append(
-      el(
-        'span',
-        null,
-        incident.state === 'open'
-          ? `${incident.maintenance ? 'opened' : 'started'} ${relative(incident.createdAt)}`
-          : `${formatDate(incident.createdAt)} · ${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)}`,
-      ),
-    );
-    item.append(meta);
-    list.append(item);
-  }
+  for (const incident of recent.slice(0, 10)) list.append(renderIncidentItem(incident));
   section.hidden = false;
 }
 
