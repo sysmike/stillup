@@ -351,22 +351,10 @@ main.shell {
   text-decoration: underline;
 }
 
-.compact-sub {
-  flex: none;
-  font-size: 12.5px;
-  color: var(--muted);
-}
 
-/* A reserved column keeps every strip ending at the same place. The digits
-   start at its left edge, so the gap before them is the row's own. */
+
 .compact-uptime {
-  flex: none;
-  min-width: 58px;
-  text-align: left;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
   font-size: 13.5px;
-  color: var(--status, var(--text));
 }
 
 .card {
@@ -380,7 +368,7 @@ main.shell {
 .card-head {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .card-left {
@@ -443,24 +431,30 @@ main.shell {
   color: var(--muted);
 }
 
-/* A reserved column so every card's strip ends at the same place, whatever
-   the status word is. A long one wraps inside it rather than widening it. */
-.card-status {
-  flex: 0 0 96px;
-  text-align: right;
-}
+
 
 .card-uptime {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--status, var(--text));
+  font-size: 14px;
 }
 
-.card-sub {
+/* Shared by both layouts: identical widths here are what make the strips in a
+   card and in a compact row line up with each other. */
+.card-sub,
+.compact-sub {
+  flex: 0 0 86px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12.5px;
   color: var(--muted);
-  margin-top: 2px;
+}
+
+.card-uptime,
+.compact-uptime {
+  flex: 0 0 58px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--status, var(--text));
 }
 
 .bars {

@@ -1,6 +1,7 @@
+// Kept short: this label shares a fixed column with the figure beside it.
 const STATUS_TEXT = {
   up: 'Operational',
-  degraded: 'Degraded performance',
+  degraded: 'Degraded',
   partial: 'Partial outage',
   down: 'Down',
   none: 'No data',
@@ -489,11 +490,12 @@ function renderCard(monitor) {
   scale.append(el('span', null, `${RANGE_DAYS} days ago`), el('span'), el('span', null, 'Today'));
   strip.append(bars, scale);
 
-  const right = el('div', 'card-status');
-  right.append(el('div', 'card-uptime', formatUptime(monitor.uptime.month)));
-  right.append(el('div', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status));
+  // Status and figure sit beside the strip exactly as they do in a compact
+  // row, which is what lines the two strips up with each other.
+  const status = el('span', 'card-sub', STATUS_TEXT[monitor.status] || monitor.status);
+  const uptime = el('span', 'card-uptime', formatUptime(monitor.uptime.month));
 
-  head.append(left, strip, right);
+  head.append(left, strip, status, uptime);
   card.append(head);
   registerStrip(bars, monitor, 2, strip);
 
@@ -583,7 +585,7 @@ function renderCompactRow(monitor) {
   // rather than guessed at, which is what used to leave it clipped.
   const bars = el('div', 'bars bars-compact');
   row.append(bars);
-  registerStrip(bars, monitor, 1);
+  registerStrip(bars, monitor, 2);
 
   row.append(el('span', 'compact-sub', STATUS_TEXT[monitor.status] || monitor.status));
   row.append(el('span', 'compact-uptime', formatUptime(monitor.uptime.month)));
