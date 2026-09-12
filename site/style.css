@@ -357,10 +357,12 @@ main.shell {
   color: var(--muted);
 }
 
-/* No fixed width: a reserved box right-aligns its text, which leaves a wider
-   visible gap before a short figure than the row's own gap. */
+/* A reserved column keeps every strip ending at the same place. The digits
+   start at its left edge, so the gap before them is the row's own. */
 .compact-uptime {
   flex: none;
+  min-width: 58px;
+  text-align: left;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   font-size: 13.5px;
