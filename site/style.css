@@ -383,18 +383,22 @@ main.shell {
   gap: 16px;
 }
 
-/* A fixed name column keeps every card's strip starting at the same place,
-   whatever the status word beside it is. */
 .card-left {
-  flex: 0 0 30%;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-/* Takes the leftover width while it is measured; the fill sets it to the
-   width it actually painted. */
+/* Takes the leftover width while it is measured, then holds the width it
+   painted, with the auto margin keeping it against the figure on the right. */
 .card .strip-block {
   flex: 1 1 auto;
   min-width: 0;
+  margin-left: auto;
+}
+
+.card .strip-block.is-sized {
+  flex: 0 0 auto;
+  width: var(--strip-width);
 }
 
 .card .bars {
@@ -439,10 +443,11 @@ main.shell {
   color: var(--muted);
 }
 
+/* A reserved column so every card's strip ends at the same place, whatever
+   the status word is. A long one wraps inside it rather than widening it. */
 .card-status {
-  margin-left: auto;
+  flex: 0 0 96px;
   text-align: right;
-  flex: none;
 }
 
 .card-uptime {
@@ -644,14 +649,18 @@ main.shell {
   .card-desc {
     display: none;
   }
-  /* Too little width for name, strip and figure side by side: the name takes
-     a line of its own and the other two share the next. */
+  /* Too little width for name, strip and figure side by side: name and figure
+     keep the first line and the strip takes the second. */
   .card-head {
     flex-wrap: wrap;
     gap: 10px 16px;
   }
-  .card-left {
+  .card .strip-block,
+  .card .strip-block.is-sized {
+    order: 3;
     flex: 1 0 100%;
+    width: auto;
+    margin-left: 0;
   }
   .compact-row {
     gap: 9px;

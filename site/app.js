@@ -565,9 +565,10 @@ function fillPendingStrips() {
     // compact row's strip is a flex item that already holds the leftover.
     const painted = fillBars(bars, monitor, (wrapper || bars).clientWidth, gap, RANGE_DAYS, BAR_WIDTH);
     if (wrapper) {
-      // Stop it growing back into the leftover it was measured against.
-      wrapper.style.flex = '0 0 auto';
-      wrapper.style.width = `${painted.width}px`;
+      // Reported as a property rather than a width, so a media query can still
+      // lay the strip out differently without fighting an inline style.
+      wrapper.style.setProperty('--strip-width', `${painted.width}px`);
+      wrapper.classList.add('is-sized');
     }
   }
 }
