@@ -17,7 +17,10 @@ function readJson(file, fallback) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
 }
 
-const { site, groups, monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
+const { site, groups, monitors, incidents: incidentSettings } = loadConfig(
+  process.env.CONFIG_VARS,
+  process.env.CONFIG_SECRETS,
+);
 const state = readJson('history/state.json', {});
 const incidents = readJson('history/incidents.json', []);
 const keys = dayKeys(DAYS);
@@ -70,6 +73,14 @@ const overall = active.some((monitor) => monitor.status === 'down')
       ? 'up'
       : 'none';
 
+// Where a reader goes for incidents older than the page lists. Empty outside
+// Actions, where the repository is not known.
+const issuesUrl = process.env.GITHUB_REPOSITORY
+  ? `https://github.com/${process.env.GITHUB_REPOSITORY}/issues?q=${encodeURIComponent(
+      `is:issue label:${incidentSettings.labels[0]}`,
+    )}`
+  : null;
+
 // Where the page can read the current state without a redeployment. Empty
 // outside Actions, which keeps a local build self-contained.
 const live = process.env.GITHUB_REPOSITORY
@@ -82,6 +93,7 @@ writeFileSync(
     {
       generatedAt: new Date().toISOString(),
       live,
+      issuesUrl,
       site,
       groups,
       overall,

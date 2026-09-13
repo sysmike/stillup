@@ -30,6 +30,10 @@ const monitorsEl = document.getElementById('monitors');
 // The page shows a fixed window; the detail view shows the whole history.
 const RANGE_DAYS = 30;
 const BAR_WIDTH = 5;
+// How far back the list reaches, and how many resolved entries it keeps. An
+// open incident is always listed, however old it is.
+const INCIDENT_DAYS = 30;
+const PAST_INCIDENTS = 10;
 let data;
 
 const el = (tag, className, text) => {
@@ -265,9 +269,9 @@ function commentCount(count) {
 }
 
 // One entry of the timeline: when it happened, what happened, and how it went.
-function renderIncidentItem(incident) {
+function renderIncidentItem(incident, active = false) {
   const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
-  const item = el('li', 'event');
+  const item = el('li', active ? 'event is-active' : 'event');
   item.dataset.state = state;
 
   const icon = el('span', 'event-icon');
@@ -531,7 +535,8 @@ async function openDetail(slug) {
   incidentSection.append(el('h3', 'section-title', 'Incidents'));
   if (related.length) {
     const list = el('ul', 'incident-list');
-    for (const incident of related) list.append(renderIncidentItem(incident));
+    // An open incident looks open wherever it is listed.
+    for (const incident of related) list.append(renderIncidentItem(incident, incident.state === 'open'));
     incidentSection.append(list);
   } else {
     incidentSection.append(el('p', 'detail-empty', 'No incidents recorded for this monitor.'));
@@ -592,16 +597,29 @@ addEventListener('hashchange', syncDialog);
 function renderIncidents(incidents) {
   const section = document.getElementById('incidents');
   const list = document.getElementById('incident-list');
+  const empty = document.getElementById('incidents-empty');
+  const more = document.getElementById('incidents-more');
+
   const recent = incidents.filter(
-    (incident) => incident.state === 'open' || Date.now() - new Date(incident.createdAt) < 30 * 86400000,
+    (incident) => incident.state === 'open' || Date.now() - new Date(incident.createdAt) < INCIDENT_DAYS * 86400000,
   );
-  if (recent.length === 0) {
-    section.hidden = true;
-    return;
-  }
+  // An outage that is still open leads, whatever its date: one opened days ago
+  // would otherwise sink below incidents that have since been resolved.
+  const active = recent.filter((incident) => incident.state === 'open');
+  const past = recent.filter((incident) => incident.state !== 'open').slice(0, PAST_INCIDENTS);
 
   list.replaceChildren();
-  for (const incident of recent.slice(0, 10)) list.append(renderIncidentItem(incident));
+  if (active.length && past.length) list.append(el('li', 'event-group', 'Active'));
+  for (const incident of active) list.append(renderIncidentItem(incident, true));
+  if (active.length && past.length) list.append(el('li', 'event-group', 'Earlier'));
+  for (const incident of past) list.append(renderIncidentItem(incident));
+
+  // Nothing having happened is the good news a status page is there to give,
+  // so it is said rather than left to an absent section.
+  empty.textContent = `No incidents in the last ${INCIDENT_DAYS} days.`;
+  empty.hidden = recent.length > 0;
+  more.hidden = !data.issuesUrl;
+  if (data.issuesUrl) document.getElementById('incidents-link').href = data.issuesUrl;
   section.hidden = false;
 }
 

@@ -269,12 +269,69 @@ main.shell {
 
 /* Only the list on the page is a box of its own, with the heading above it as
    the monitors have. The one inside a dialog stays flat. */
-#incident-list {
+.incident-box {
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.incidents-empty {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* The list ends where the entries end; the link below it is separated so it
+   does not read as part of the last one. */
+#incident-list .event:last-child {
+  padding-bottom: 0;
+}
+
+.incidents-more {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.incidents-more a {
+  color: var(--muted);
+}
+
+/* An outage that is still open leads the list and is lifted out of it, so a
+   live incident is never a row like any other. */
+.event.is-active {
+  padding: 12px 14px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--status) 30%, transparent);
+  background: color-mix(in srgb, var(--status) 7%, var(--surface-alt));
+}
+
+.event.is-active + .event.is-active {
+  margin-top: 10px;
+}
+
+.event.is-active::before {
+  display: none;
+}
+
+.event.is-active .incident-title {
+  font-weight: 600;
+}
+
+.event-group {
+  margin: 18px 0 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.event-group:first-child {
+  margin-top: 0;
 }
 
 .incident-title {

@@ -299,6 +299,11 @@ five are kept, each cut to 800 characters, with a line pointing at GitHub when
 there are more. A run only asks GitHub for a thread whose comment count
 changed, so a quiet run costs no extra requests.
 
+The page lists an open incident first, whatever its date, so a live outage is
+never below something that has since been resolved; resolved entries follow, the
+last ten within 30 days, with a link to the rest on GitHub. A quiet month says
+so rather than hiding the section.
+
 Issues labelled with the incident label show up on the page, so you can also
 open one by hand for planned work: the **Planned maintenance** issue template
 applies the `status` and `maintenance` labels and the entry is rendered as
