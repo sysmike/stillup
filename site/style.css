@@ -304,8 +304,10 @@ main.shell {
   background: color-mix(in srgb, var(--status) 7%, var(--surface-alt));
 }
 
-.event.is-active + .event.is-active {
-  margin-top: 10px;
+/* The box keeps its distance from whatever follows it, which on a monitor's
+   dialog is the next entry rather than a group heading. */
+.event.is-active:not(:last-child) {
+  margin-bottom: 16px;
 }
 
 .event.is-active .incident-title {
