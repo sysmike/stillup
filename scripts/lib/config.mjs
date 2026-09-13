@@ -9,8 +9,11 @@
 // defined as a secret instead of a variable is private by default: its URL is
 // kept out of the published site and out of incident issues.
 
+import { MAINTENANCE_LABEL } from './issues.mjs';
+
 const MONITOR_PREFIX = 'MONITOR_';
 const GROUP_PREFIX = 'GROUP_';
+const DEFAULT_INCIDENT_LABELS = ['status', 'incident'];
 
 const DEFAULTS = {
   method: 'GET',
@@ -152,12 +155,16 @@ export function loadConfig(varsJson, secretsJson) {
     theme: vars.SITE_THEME === 'light' ? 'light' : vars.SITE_THEME === 'dark' ? 'dark' : 'auto',
   };
 
+  // The maintenance label marks planned work, so an automatic incident must
+  // never carry it however INCIDENT_LABELS is written.
+  const labels = (vars.INCIDENT_LABELS || DEFAULT_INCIDENT_LABELS.join(','))
+    .split(',')
+    .map((label) => label.trim())
+    .filter((label) => label && label !== MAINTENANCE_LABEL);
+
   const incidents = {
     threshold: Number(vars.INCIDENT_THRESHOLD || 2),
-    labels: (vars.INCIDENT_LABELS || 'status,incident')
-      .split(',')
-      .map((label) => label.trim())
-      .filter(Boolean),
+    labels: labels.length ? labels : DEFAULT_INCIDENT_LABELS,
   };
 
   return { site, groups, monitors, incidents };

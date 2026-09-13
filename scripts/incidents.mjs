@@ -8,6 +8,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { api, ensureLabel, repo } from './lib/github.mjs';
+import { MAINTENANCE_LABEL, isMaintenance, marker, markedMonitor, stripMarker } from './lib/issues.mjs';
 import { dayKeys, liveMonitor } from './lib/summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -16,14 +17,12 @@ const INCIDENTS_FILE = `${ROOT}history/incidents.json`;
 const LIVE_FILE = `${ROOT}history/live.json`;
 const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 
-const marker = (slug) => `<!-- monitor:${slug} -->`;
-
 // Issues this workflow opens name their monitor in a marker. One filed through
 // the maintenance template names them in prose instead, under a heading the
 // form generates, so both are resolved to slugs for the page to filter on.
 function affectedMonitors(body) {
   const found = new Set();
-  const tagged = (body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1];
+  const tagged = markedMonitor(body);
   if (tagged) found.add(tagged);
 
   const section = (body || '').match(/###\s*Affected monitors\s*\n+([^\n#]+)/i)?.[1];
@@ -61,7 +60,7 @@ for (const label of settings.labels) {
   await ensureLabel(label, 'd73a4a', 'Status page incident');
 }
 // The maintenance issue template applies this label, so it has to exist.
-await ensureLabel('maintenance', '0969da', 'Planned maintenance shown on the status page');
+await ensureLabel(MAINTENANCE_LABEL, '0969da', 'Planned maintenance shown on the status page');
 
 const open = await api(
   `/repos/${repo}/issues?state=open&labels=${encodeURIComponent(primaryLabel)}&per_page=100`,
@@ -144,14 +143,11 @@ const snapshot = JSON.stringify(
       createdAt: issue.created_at,
       closedAt: issue.closed_at,
       labels: issue.labels.map((label) => label.name),
-      monitor: (issue.body || '').match(/<!-- monitor:([a-z0-9-]+) -->/)?.[1] || null,
+      monitor: markedMonitor(issue.body),
       monitors: affectedMonitors(issue.body),
       // The page renders this itself so a reader never has to leave for GitHub.
-      body: (issue.body || '')
-        .replace(/<!-- monitor:[a-z0-9-]+ -->/g, '')
-        .trim()
-        .slice(0, 2000),
-      maintenance: issue.labels.some((label) => label.name === 'maintenance'),
+      body: stripMarker(issue.body).trim().slice(0, 2000),
+      maintenance: isMaintenance(issue),
     })),
   null,
   2,

@@ -164,3 +164,18 @@ test('redact passes empty messages through', () => {
   assert.equal(redact(null, 'https://example.com'), null);
   assert.equal(redact('', 'https://example.com'), '');
 });
+
+test('the maintenance label is reserved and never applied to an incident', () => {
+  assert.deepEqual(
+    loadConfig(vars({ INCIDENT_LABELS: 'status,incident,maintenance' })).incidents.labels,
+    ['status', 'incident'],
+  );
+});
+
+test('a label list that leaves nothing behind falls back to the defaults', () => {
+  assert.deepEqual(loadConfig(vars({ INCIDENT_LABELS: 'maintenance' })).incidents.labels, [
+    'status',
+    'incident',
+  ]);
+  assert.deepEqual(loadConfig(vars({ INCIDENT_LABELS: ' , ' })).incidents.labels, ['status', 'incident']);
+});

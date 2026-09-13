@@ -50,7 +50,7 @@ the certificate.
 | `SITE_LOGO` | none | Logo URL shown next to the title |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
-| `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues |
+| `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
 
 ## Monitors
 
@@ -209,6 +209,11 @@ applies the `status` and `maintenance` labels and the entry is rendered as
 maintenance rather than as an outage. If `INCIDENT_LABELS` is customised, the
 first label in it has to be the one in
 `.github/ISSUE_TEMPLATE/maintenance.yml`.
+
+The `maintenance` label is reserved for that template. It is dropped from
+`INCIDENT_LABELS` if it appears there, and an issue the workflow opened for an
+outage is shown as an outage even if it carries the label, so a mislabelled
+issue cannot present downtime as planned work.
 
 ## Local preview
 
