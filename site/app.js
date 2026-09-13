@@ -49,33 +49,74 @@ const svg = (tag, attrs = {}) => {
   return node;
 };
 
+// Two different questions, answered separately. Which language the page speaks
+// is the page's own — its labels are written in one, and times that disagree
+// with them read as a fault. Which zone a time is shown in is the reader's: a
+// status page is read from wherever the reader happens to be, and one
+// converting UTC in their head is one reading it wrong.
+let LOCALE = 'en';
+
+// Formatters cost more to construct than to use, and the strip asks for one per
+// hovered bar, so they are kept. The locale is part of the key because it is
+// only known once the configuration has loaded.
+const FORMATTERS = new Map();
+
+function formatter(kind, name, options) {
+  const key = `${name}:${LOCALE}:${JSON.stringify(options)}`;
+  let made = FORMATTERS.get(key);
+  if (!made) {
+    made = new kind(LOCALE, options);
+    FORMATTERS.set(key, made);
+  }
+  return made;
+}
+
+const relativeFormat = (options) => formatter(Intl.RelativeTimeFormat, 'relative', options);
+const numberFormat = (options) => formatter(Intl.NumberFormat, 'number', options);
+const dateFormat = (options) => formatter(Intl.DateTimeFormat, 'date', options);
+
+// Each entry is what divides the unit before it, paired with the unit that
+// division reaches. A year is deliberately absent: an incident that old is
+// clearer counted in months.
+const SCALES = [
+  [60, 'minute'],
+  [60, 'hour'],
+  [24, 'day'],
+  [30, 'month'],
+];
+
+// Wording and plural form come from the locale rather than from this file:
+// "2 minutes ago" has three forms in Polish, and none of them is built by
+// appending an s.
 function relative(iso) {
   if (!iso) return 'never';
   const seconds = Math.round((Date.now() - new Date(iso)) / 1000);
-  if (seconds < 60) return 'just now';
-  const scales = [
-    [60, 'minute'],
-    [60, 'hour'],
-    [24, 'day'],
-    [30, 'month'],
-  ];
+  // Zero seconds is the locale's own word for now, which beats a count that
+  // would read "in 0 seconds".
+  if (seconds < 60) return relativeFormat({ numeric: 'auto' }).format(0, 'second');
+
   let value = seconds;
   let unit = 'second';
-  for (const [size, next] of scales) {
+  for (const [size, next] of SCALES) {
     if (value < size) break;
     value /= size;
     unit = next;
   }
-  const rounded = Math.round(value);
-  return `${rounded} ${unit}${rounded === 1 ? '' : 's'} ago`;
+  return relativeFormat({ numeric: 'auto' }).format(-Math.round(value), unit);
 }
 
+const amount = (value, unit, unitDisplay = 'narrow') =>
+  numberFormat({ style: 'unit', unit, unitDisplay }).format(value);
+
+// How long something lasted, which is a measurement rather than a point in
+// time. A single unit has room to be spelled out; a pair is kept narrow so it
+// stays on one line beside the entry it belongs to.
 function elapsed(from, to) {
   const minutes = Math.max(1, Math.round((new Date(to) - new Date(from)) / 60000));
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  if (minutes < 60) return amount(minutes, 'minute', 'long');
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ${minutes % 60}m`;
-  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+  if (hours < 24) return `${amount(hours, 'hour')} ${amount(minutes % 60, 'minute')}`;
+  return `${amount(Math.floor(hours / 24), 'day')} ${amount(hours % 24, 'hour')}`;
 }
 
 // Date and time are formatted apart: asking for both at once gives some locales
@@ -83,26 +124,32 @@ function elapsed(from, to) {
 // is not from this one.
 function formatDateTime(iso) {
   const at = new Date(iso);
-  const thisYear = at.getUTCFullYear() === new Date().getUTCFullYear();
-  const day = at.toLocaleDateString(undefined, {
+  const thisYear = at.getFullYear() === new Date().getFullYear();
+  const day = dateFormat({
     day: 'numeric',
     month: 'short',
     ...(thisYear ? {} : { year: 'numeric' }),
-    timeZone: 'UTC',
-  });
-  const time = at.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  });
+  }).format(at);
+  const time = dateFormat({ hour: 'numeric', minute: '2-digit' }).format(at);
   // A middle dot rather than a comma: a short month already ends in a period in
   // some locales, where "13. Sept., 19:27" reads as a stumble.
-  return `${day} · ${time} UTC`;
+  return `${day} · ${time}`;
 }
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
+// The unabbreviated form, naming the zone the short one leaves implicit.
+const fullDateTime = (iso) => dateFormat({ dateStyle: 'full', timeStyle: 'long' }).format(new Date(iso));
+
+// An instant, shown in the reader's zone.
+const formatDate = (iso) =>
+  dateFormat({ month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso));
+
+// A day key names a calendar day in UTC, not an instant. Parsed as a date it
+// lands on midnight UTC, so a reader west of it would see every bar labelled
+// with the day before; this one zone stays fixed to keep the label on its day.
+const formatDay = (key) =>
+  dateFormat({ month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${key}T00:00:00Z`),
+  );
 
 function formatUptime(value) {
   return value === null ? '—' : `${value.toFixed(value >= 99.995 ? 0 : 2)}%`;
@@ -159,7 +206,7 @@ function fillBars(bars, monitor, width, gap, count, targetBar = 0) {
     bar.addEventListener('mouseenter', (event) => {
       const ratio = day.checks ? ((day.checks - day.down) / day.checks) * 100 : null;
       showTooltip(event, [
-        el('b', null, formatDate(day.date)),
+        el('b', null, formatDay(day.date)),
         el(
           'span',
           null,
@@ -284,7 +331,9 @@ function renderIncidentItem(incident, active = false) {
   icon.append(mark);
 
   const body = el('div', 'event-body');
-  body.append(el('div', 'event-date', formatDateTime(incident.createdAt)));
+  const date = el('div', 'event-date', formatDateTime(incident.createdAt));
+  date.title = fullDateTime(incident.createdAt);
+  body.append(date);
 
   const title = el('button', 'incident-title', incident.title);
   title.type = 'button';
@@ -475,7 +524,8 @@ function openIncident(number) {
   // The chips above already name the monitors, so the section the maintenance
   // template writes would only repeat them. It stays when nothing resolved.
   const section = el('div', 'detail-section');
-  if (incident.body) renderBody(section, incident.body, affected.length ? ['affected monitors'] : []);
+  const repeated = affected.length && data.monitorsHeading ? [data.monitorsHeading.toLowerCase()] : [];
+  if (incident.body) renderBody(section, incident.body, repeated);
   if (!section.childElementCount) section.append(el('p', 'detail-empty', 'No description was given.'));
   detailBody.append(section);
 
@@ -776,6 +826,11 @@ function setFavicon(status) {
 }
 
 function render() {
+  // Before anything is formatted: the locale is part of every formatter's cache
+  // key, so a late change would leave the ones already built behind.
+  LOCALE = data.site.lang || 'en';
+  document.documentElement.lang = LOCALE;
+
   document.title = data.site.title;
   document.getElementById('brand-title').textContent = data.site.title;
   if (data.site.logo) {

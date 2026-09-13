@@ -94,6 +94,7 @@ writeFileSync(
       generatedAt: new Date().toISOString(),
       live,
       issuesUrl,
+      monitorsHeading: incidentSettings.monitorsHeading,
       site,
       groups,
       overall,

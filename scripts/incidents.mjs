@@ -8,7 +8,14 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { api, ensureLabel, repo } from './lib/github.mjs';
-import { MAINTENANCE_LABEL, isMaintenance, marker, markedMonitor, stripMarker } from './lib/issues.mjs';
+import {
+  MAINTENANCE_LABEL,
+  affectedMonitors,
+  isMaintenance,
+  marker,
+  markedMonitor,
+  stripMarker,
+} from './lib/issues.mjs';
 import { notify } from './lib/notify.mjs';
 import { dayKeys, liveMonitor } from './lib/summary.mjs';
 
@@ -23,26 +30,6 @@ const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 // thread is one click away on GitHub, and commentCount says how many there are.
 const COMMENTS_PER_ISSUE = 5;
 const COMMENT_LENGTH = 800;
-
-// Issues this workflow opens name their monitor in a marker. One filed through
-// the maintenance template names them in prose instead, under a heading the
-// form generates, so both are resolved to slugs for the page to filter on.
-function affectedMonitors(body) {
-  const found = new Set();
-  const tagged = markedMonitor(body);
-  if (tagged) found.add(tagged);
-
-  const section = (body || '').match(/###\s*Affected monitors\s*\n+([^\n#]+)/i)?.[1];
-  for (const token of (section || '').split(/[,;]/)) {
-    const name = token.trim().toLowerCase();
-    if (!name || name === '_no response_') continue;
-    const match = monitors.find(
-      (monitor) => monitor.slug === name || monitor.name.toLowerCase() === name,
-    );
-    if (match) found.add(match.slug);
-  }
-  return [...found];
-}
 
 function readJson(file, fallback) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : fallback;
@@ -213,7 +200,7 @@ const snapshot = JSON.stringify(
       closedAt: issue.closed_at,
       labels: issue.labels.map((label) => label.name),
       monitor: markedMonitor(issue.body),
-      monitors: affectedMonitors(issue.body),
+      monitors: affectedMonitors(issue.body, monitors, settings.monitorsHeading),
       // The page renders this itself so a reader never has to leave for GitHub.
       body: stripMarker(issue.body).trim().slice(0, 2000),
       maintenance: isMaintenance(issue),

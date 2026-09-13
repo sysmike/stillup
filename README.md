@@ -49,8 +49,10 @@ the certificate.
 | `SITE_LINK` | none | Link in the footer |
 | `SITE_LOGO` | none | Logo URL shown next to the title |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
+| `SITE_LANG` | `en` | Language tag the page's dates and durations are worded in |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
+| `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
 
 ## Monitors
 
@@ -311,6 +313,13 @@ maintenance rather than as an outage. If `INCIDENT_LABELS` is customised, the
 first label in it has to be the one in
 `.github/ISSUE_TEMPLATE/maintenance.yml`.
 
+The template's **Affected monitors** field is what links an issue to the
+monitors it concerns: GitHub renders the field's label as a heading in the issue
+body, and both the workflow and the page look for that heading by name. If you
+rename the label — translating the form, for instance — set `MONITORS_HEADING`
+to the new text. Get the two out of step and the linking stops working without
+saying so.
+
 The `maintenance` label is reserved for that template. It is dropped from
 `INCIDENT_LABELS` if it appears there, and an issue the workflow opened for an
 outage is shown as an outage even if it carries the label, so a mislabelled
@@ -358,6 +367,11 @@ runs the same command on every push that touches `scripts/` or `test/`.
   day tooltip alike; only a failed check counts against them.
 - Checks run from GitHub's runners, so they only see outages that are visible
   from the public internet.
+- Times are shown in the reader's own time zone, with the full timestamp and
+  the zone's name in the tooltip of an incident's date. The day a bar stands for
+  is a UTC day, and stays labelled as one wherever it is read from. How dates
+  and durations are worded follows `SITE_LANG`, not the reader's browser, so
+  they match the rest of the page — which is written in English.
 
 ## License
 

@@ -9,7 +9,7 @@
 // defined as a secret instead of a variable is private by default: its URL is
 // kept out of the published site and out of incident issues.
 
-import { MAINTENANCE_LABEL } from './issues.mjs';
+import { DEFAULT_MONITORS_HEADING, MAINTENANCE_LABEL } from './issues.mjs';
 import { TARGET_TYPES } from './notify.mjs';
 
 const MONITOR_PREFIX = 'MONITOR_';
@@ -205,6 +205,10 @@ export function loadConfig(varsJson, secretsJson) {
 
   const site = {
     title: vars.SITE_TITLE || 'Status',
+    // The language the page's own text is written in, which is what decides how
+    // dates and durations are worded. Times are still shown in the reader's
+    // zone, whatever this says.
+    lang: (vars.SITE_LANG || '').trim() || 'en',
     description: vars.SITE_DESCRIPTION || '',
     link: vars.SITE_LINK || '',
     logo: vars.SITE_LOGO || '',
@@ -221,6 +225,9 @@ export function loadConfig(varsJson, secretsJson) {
   const incidents = {
     threshold: Number(vars.INCIDENT_THRESHOLD || 2),
     labels: labels.length ? labels : DEFAULT_INCIDENT_LABELS,
+    // Must match the label on the maintenance form's monitors field, which is
+    // what GitHub turns into the heading this is looked for under.
+    monitorsHeading: (vars.MONITORS_HEADING || '').trim() || DEFAULT_MONITORS_HEADING,
   };
 
   return { site, groups, monitors, incidents, notifications };

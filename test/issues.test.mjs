@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isMaintenance, marker, markedMonitor, stripMarker } from '../scripts/lib/issues.mjs';
+import {
+  DEFAULT_MONITORS_HEADING,
+  affectedMonitors,
+  isMaintenance,
+  marker,
+  markedMonitor,
+  stripMarker,
+} from '../scripts/lib/issues.mjs';
 
 const issue = (labels, body = '') => ({ labels: labels.map((name) => ({ name })), body });
 
@@ -33,4 +40,38 @@ test('an ordinary incident is not maintenance', () => {
 test('labels may arrive as plain strings', () => {
   assert.equal(isMaintenance({ labels: ['status', 'maintenance'], body: 'Planned' }), true);
   assert.equal(isMaintenance({ labels: [], body: '' }), false);
+});
+
+const monitors = [
+  { slug: 'api', name: 'Public API' },
+  { slug: 'docs', name: 'Documentation' },
+];
+
+const filed = (heading, value) => `### Window\n\nTonight\n\n### ${heading}\n\n${value}\n\n### Notes\n\nNone`;
+
+test('the template names its monitors under the heading the form writes', () => {
+  assert.deepEqual(affectedMonitors(filed(DEFAULT_MONITORS_HEADING, 'Public API, docs'), monitors), ['api', 'docs']);
+  assert.deepEqual(affectedMonitors(filed(DEFAULT_MONITORS_HEADING, 'Nothing we monitor'), monitors), []);
+});
+
+test('a renamed heading is found once it is configured', () => {
+  const body = filed('Betroffene Monitore', 'Public API');
+  assert.deepEqual(affectedMonitors(body, monitors, 'Betroffene Monitore'), ['api']);
+  // The point of the setting: left at the default, the section is not seen.
+  assert.deepEqual(affectedMonitors(body, monitors), []);
+});
+
+test('a heading is matched as text, not as a pattern', () => {
+  const body = filed('Affected monitor(s)', 'docs');
+  assert.deepEqual(affectedMonitors(body, monitors, 'Affected monitor(s)'), ['docs']);
+  assert.deepEqual(affectedMonitors(filed('Affected monitors', 'docs'), monitors, 'Affected monitor(s)'), []);
+});
+
+test('a field left empty names nothing', () => {
+  assert.deepEqual(affectedMonitors(filed(DEFAULT_MONITORS_HEADING, '_No response_'), monitors), []);
+  assert.deepEqual(affectedMonitors(null, monitors), []);
+});
+
+test('an issue the workflow opened is linked by its marker alone', () => {
+  assert.deepEqual(affectedMonitors(`${marker('api')}\nPublic API is down`, monitors), ['api']);
 });

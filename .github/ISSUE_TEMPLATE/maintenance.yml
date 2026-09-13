@@ -27,6 +27,9 @@ body:
       placeholder: The API returns 503 for up to ten minutes while the database fails over.
     validations:
       required: true
+  # GitHub turns this label into a heading in the issue body, and that heading
+  # is how the page finds which monitors an issue names. Rename it and set the
+  # MONITORS_HEADING variable to match, or the linking stops working silently.
   - type: input
     id: monitors
     attributes:

@@ -130,13 +130,21 @@ test('site settings fall back and the theme is limited to the three values', () 
   assert.partialDeepStrictEqual(loadConfig(vars({})).site, { title: 'Status', theme: 'auto' });
   assert.equal(loadConfig(vars({ SITE_THEME: 'dark' })).site.theme, 'dark');
   assert.equal(loadConfig(vars({ SITE_THEME: 'neon' })).site.theme, 'auto');
+  assert.equal(loadConfig(vars({})).site.lang, 'en');
+  assert.equal(loadConfig(vars({ SITE_LANG: ' de ' })).site.lang, 'de');
 });
 
 test('incident settings fall back', () => {
-  assert.deepEqual(loadConfig(vars({})).incidents, { threshold: 2, labels: ['status', 'incident'] });
+  const heading = 'Affected monitors';
+  assert.deepEqual(loadConfig(vars({})).incidents, {
+    threshold: 2,
+    labels: ['status', 'incident'],
+    monitorsHeading: heading,
+  });
   assert.deepEqual(loadConfig(vars({ INCIDENT_THRESHOLD: '4', INCIDENT_LABELS: 'status, outage ,' })).incidents, {
     threshold: 4,
     labels: ['status', 'outage'],
+    monitorsHeading: heading,
   });
 });
 
@@ -237,4 +245,15 @@ test('a destination hears about every event unless it says otherwise', () => {
   );
   assert.deepEqual(notifications[0].events, ['down', 'degraded', 'up']);
   assert.deepEqual(notifications[1].events, ['down']);
+});
+
+test('the heading the maintenance form writes is configurable', () => {
+  const { incidents } = loadConfig('{}');
+  assert.equal(incidents.monitorsHeading, 'Affected monitors');
+
+  const renamed = loadConfig(JSON.stringify({ MONITORS_HEADING: ' Betroffene Monitore ' }));
+  assert.equal(renamed.incidents.monitorsHeading, 'Betroffene Monitore');
+
+  // An empty variable is the same as an unset one.
+  assert.equal(loadConfig(JSON.stringify({ MONITORS_HEADING: '' })).incidents.monitorsHeading, 'Affected monitors');
 });
