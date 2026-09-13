@@ -293,7 +293,11 @@ function renderIncidentItem(incident, active = false) {
     if (location.hash === hash) openIncident(incident.number);
     else location.hash = hash;
   });
-  body.append(title);
+  // The count belongs to the title, not to the state line below it.
+  const heading = el('div', 'incident-heading');
+  heading.append(title);
+  if (incident.commentCount) heading.append(commentCount(incident.commentCount));
+  body.append(heading);
 
   // The icon and its colour already say what state this is, so the line says it
   // in words once rather than repeating it as a chip beside them.
@@ -309,7 +313,6 @@ function renderIncidentItem(incident, active = false) {
         : `${incident.maintenance ? 'Completed' : 'Resolved'} ${relative(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`,
     ),
   );
-  if (incident.commentCount) meta.append(commentCount(incident.commentCount));
   body.append(meta);
 
   item.append(icon, body);
