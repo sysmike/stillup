@@ -78,14 +78,16 @@ function elapsed(from, to) {
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
 
-// Date and time are formatted apart and joined with a comma: asking for both
-// at once gives some locales a connecting word in the middle.
+// Date and time are formatted apart: asking for both at once gives some locales
+// a connecting word in the middle. The year only earns its place once the entry
+// is not from this one.
 function formatDateTime(iso) {
   const at = new Date(iso);
+  const thisYear = at.getUTCFullYear() === new Date().getUTCFullYear();
   const day = at.toLocaleDateString(undefined, {
     day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    month: 'short',
+    ...(thisYear ? {} : { year: 'numeric' }),
     timeZone: 'UTC',
   });
   const time = at.toLocaleTimeString(undefined, {
@@ -93,7 +95,9 @@ function formatDateTime(iso) {
     minute: '2-digit',
     timeZone: 'UTC',
   });
-  return `${day}, ${time} UTC`;
+  // A middle dot rather than a comma: a short month already ends in a period in
+  // some locales, where "13. Sept., 19:27" reads as a stumble.
+  return `${day} · ${time} UTC`;
 }
 
 function formatDate(iso) {
@@ -291,15 +295,18 @@ function renderIncidentItem(incident, active = false) {
   });
   body.append(title);
 
+  // The icon and its colour already say what state this is, so the line says it
+  // in words once rather than repeating it as a chip beside them.
   const meta = el('div', 'incident-meta');
-  meta.append(el('span', `tag tag-${state}`, state));
   meta.append(
     el(
       'span',
-      null,
+      'incident-state',
       incident.state === 'open'
-        ? `${incident.maintenance ? 'opened' : 'started'} ${relative(incident.createdAt)}`
-        : `${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`,
+        ? incident.maintenance
+          ? `Maintenance, opened ${relative(incident.createdAt)}`
+          : `Down for ${elapsed(incident.createdAt, Date.now())}`
+        : `${incident.maintenance ? 'Completed' : 'Resolved'} ${relative(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`,
     ),
   );
   if (incident.commentCount) meta.append(commentCount(incident.commentCount));
