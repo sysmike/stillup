@@ -263,7 +263,7 @@ main.shell {
 }
 
 .event-date {
-  font-size: 12.5px;
+  font-size: 18px;
   color: var(--muted);
 }
 
