@@ -248,6 +248,22 @@ const INCIDENT_ICONS = {
   resolved: 'M5 12.5 10 17.5 19 7',
 };
 
+// A speech bubble and a number: the entry says a conversation is attached
+// without the reader having to open it.
+function commentCount(count) {
+  const tag = el('span', 'comment-count');
+  const mark = svg('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true' });
+  mark.append(
+    svg('path', {
+      d: 'M4.5 5.5h15v11h-9l-4.5 3.5v-3.5h-1.5z',
+      'stroke-linejoin': 'round',
+    }),
+  );
+  tag.append(mark, el('span', null, String(count)));
+  tag.title = `${count} comment${count === 1 ? '' : 's'}`;
+  return tag;
+}
+
 // One entry of the timeline: when it happened, what happened, and how it went.
 function renderIncidentItem(incident) {
   const state = incident.maintenance ? 'maintenance' : incident.state === 'open' ? 'open' : 'resolved';
@@ -282,6 +298,7 @@ function renderIncidentItem(incident) {
         : `${incident.maintenance ? 'completed' : 'resolved'} ${relative(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`,
     ),
   );
+  if (incident.commentCount) meta.append(commentCount(incident.commentCount));
   body.append(meta);
 
   item.append(icon, body);
@@ -363,6 +380,42 @@ function renderBody(container, body, skip = []) {
   }
 }
 
+// The conversation on the issue, as far as the snapshot carries it. Bodies are
+// written by whoever commented, so they go through the same text-only renderer
+// as the issue body.
+function renderComments(incident) {
+  const comments = incident.comments || [];
+  if (!comments.length) return;
+
+  const section = el('div', 'detail-section');
+  const heading = el('h3', 'section-title', comments.length === 1 ? '1 comment' : `${comments.length} comments`);
+  section.append(heading);
+
+  for (const comment of comments) {
+    const entry = el('div', 'comment');
+    const head = el('div', 'comment-head');
+    head.append(el('span', 'comment-author', comment.author));
+    if (comment.bot) head.append(el('span', 'comment-bot', 'bot'));
+    head.append(el('span', 'comment-time', relative(comment.createdAt)));
+    entry.append(head);
+
+    const text = el('div', 'comment-body');
+    renderBody(text, comment.body || '');
+    entry.append(text);
+    section.append(entry);
+  }
+
+  // The snapshot keeps only the newest few, so say when there are more.
+  const hidden = (incident.commentCount || comments.length) - comments.length;
+  if (hidden > 0) {
+    const more = el('p', 'detail-empty');
+    more.append(`${hidden} earlier comment${hidden === 1 ? '' : 's'} on GitHub`);
+    section.append(more);
+  }
+
+  detailBody.append(section);
+}
+
 function openIncident(number) {
   const incident = (data.incidents || []).find((candidate) => candidate.number === Number(number));
   if (!incident) return;
@@ -411,6 +464,8 @@ function openIncident(number) {
   if (incident.body) renderBody(section, incident.body, affected.length ? ['affected monitors'] : []);
   if (!section.childElementCount) section.append(el('p', 'detail-empty', 'No description was given.'));
   detailBody.append(section);
+
+  renderComments(incident);
 
   const footer = el('p', 'detail-meta detail-source');
   const link = el('a', null, `Issue #${incident.number} on GitHub`);

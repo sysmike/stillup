@@ -17,6 +17,12 @@ const INCIDENTS_FILE = `${ROOT}history/incidents.json`;
 const LIVE_FILE = `${ROOT}history/live.json`;
 const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 
+// What the page shows of a conversation: the newest few comments, each cut to
+// a length that keeps live.json small enough to fetch every minute. The full
+// thread is one click away on GitHub, and commentCount says how many there are.
+const COMMENTS_PER_ISSUE = 5;
+const COMMENT_LENGTH = 800;
+
 // Issues this workflow opens name their monitor in a marker. One filed through
 // the maintenance template names them in prose instead, under a heading the
 // form generates, so both are resolved to slugs for the page to filter on.
@@ -132,6 +138,37 @@ const recent = await api(
   `/repos/${repo}/issues?state=all&labels=${encodeURIComponent(primaryLabel)}&per_page=30&sort=created&direction=desc`,
 );
 
+// The issue list already says how many comments each issue has, so a run only
+// asks for the ones it does not have yet: an issue whose count is unchanged
+// keeps the comments from the previous snapshot. A quiet run therefore costs
+// no extra requests at all.
+const previous = new Map(readJson(INCIDENTS_FILE, []).map((entry) => [entry.number, entry]));
+
+async function commentsFor(issue) {
+  if (!issue.comments) return [];
+  const before = previous.get(issue.number);
+  if (before && before.commentCount === issue.comments && before.comments) return before.comments;
+
+  const fetched = await api(
+    `/repos/${repo}/issues/${issue.number}/comments?per_page=${COMMENTS_PER_ISSUE}&sort=created&direction=desc`,
+  );
+  return fetched
+    .slice(0, COMMENTS_PER_ISSUE)
+    .map((comment) => ({
+      author: comment.user?.login || 'unknown',
+      bot: comment.user?.type === 'Bot' || /\[bot\]$/.test(comment.user?.login || ''),
+      createdAt: comment.created_at,
+      url: comment.html_url,
+      body: stripMarker(comment.body).trim().slice(0, COMMENT_LENGTH),
+    }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+const comments = new Map();
+for (const issue of recent) {
+  if (!issue.pull_request) comments.set(issue.number, await commentsFor(issue));
+}
+
 const snapshot = JSON.stringify(
   recent
     .filter((issue) => !issue.pull_request)
@@ -148,6 +185,8 @@ const snapshot = JSON.stringify(
       // The page renders this itself so a reader never has to leave for GitHub.
       body: stripMarker(issue.body).trim().slice(0, 2000),
       maintenance: isMaintenance(issue),
+      commentCount: issue.comments,
+      comments: comments.get(issue.number) || [],
     })),
   null,
   2,

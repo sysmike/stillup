@@ -325,6 +325,21 @@ main.shell {
   --status: #3b82f6;
 }
 
+.comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.comment-count svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
 .list-head {
   display: flex;
   align-items: center;
@@ -730,6 +745,44 @@ main.shell {
 
 .detail-section .section-title {
   margin-bottom: 10px;
+}
+
+.comment {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-alt);
+}
+
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.comment-author {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.comment-bot {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+/* The body reuses the issue renderer, which spaces its last block for prose
+   that continues; inside a comment box that trails. */
+.comment-body > :last-child {
+  margin-bottom: 0;
 }
 
 .detail-empty {

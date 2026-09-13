@@ -190,7 +190,7 @@ History is stored per monitor as CSV:
 history/raw/<slug>.csv     every check of the last 7 days (response time chart)
 history/daily/<slug>.csv   one aggregated row per day, kept indefinitely
 history/state.json         current status and open issue per monitor
-history/incidents.json     snapshot of recent incident issues
+history/incidents.json     snapshot of recent incident issues and their comments
 history/live.json          current status, uptime and incidents, read by the page itself
 ```
 
@@ -202,6 +202,13 @@ outage keeps up. Only the rest of the 90 day history and the response time
 chart wait for the next build, which is why a daily one is enough. GitHub
 caches raw files for five minutes, which is the practical limit on how fresh
 this is. If the fetch fails the page keeps its build time data.
+
+An incident's own view shows the issue body and the newest comments on it, so
+an update posted on the issue reaches the status page: a timeline entry says
+how many comments there are, and the entry opens the conversation. The newest
+five are kept, each cut to 800 characters, with a line pointing at GitHub when
+there are more. A run only asks GitHub for a thread whose comment count
+changed, so a quiet run costs no extra requests.
 
 Issues labelled with the incident label show up on the page, so you can also
 open one by hand for planned work: the **Planned maintenance** issue template
