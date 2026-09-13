@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { api, ensureLabel, repo } from './lib/github.mjs';
 import { MAINTENANCE_LABEL, isMaintenance, marker, markedMonitor, stripMarker } from './lib/issues.mjs';
+import { notify } from './lib/notify.mjs';
 import { dayKeys, liveMonitor } from './lib/summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -56,7 +57,10 @@ function duration(from, to) {
   return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
 
-const { incidents: settings, monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
+const { incidents: settings, monitors, notifications, site } = loadConfig(
+  process.env.CONFIG_VARS,
+  process.env.CONFIG_SECRETS,
+);
 const results = readJson(RESULTS_FILE, []);
 const state = readJson(STATE_FILE, {});
 let changed = false;
@@ -101,6 +105,21 @@ for (const result of results) {
       },
     });
     console.log(`opened #${created.number} for ${result.slug}`);
+    // The same threshold that is worth an issue is worth a notification: a
+    // single failed check never reaches either.
+    await notify(notifications, {
+      slug: result.slug,
+      name: result.name,
+      status: result.status,
+      previousStatus: previous.status,
+      url: result.url,
+      error: result.error,
+      code: result.code,
+      issueNumber: created.number,
+      issueUrl: created.html_url,
+      site: site.title,
+      at: result.timestamp,
+    });
     state[result.slug] = {
       status: 'down',
       since: previous.status === 'down' ? previous.since : result.timestamp,
@@ -121,6 +140,19 @@ for (const result of results) {
       body: { state: 'closed', state_reason: 'completed' },
     });
     console.log(`closed #${issue.number} for ${result.slug}`);
+    await notify(notifications, {
+      slug: result.slug,
+      name: result.name,
+      status: 'up',
+      previousStatus: previous.status,
+      url: result.url,
+      code: result.code,
+      downFor: duration(since, result.timestamp),
+      issueNumber: issue.number,
+      issueUrl: issue.html_url,
+      site: site.title,
+      at: result.timestamp,
+    });
   }
 
   state[result.slug] = {

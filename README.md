@@ -165,6 +165,78 @@ Groups are ordered the way monitors are: by `order` ascending, defaulting to
 `100`. Groups left without one keep the position their monitors give them,
 which is what happens when no group is configured at all.
 
+## Notifications
+
+One variable per destination, named `NOTIFY_<NAME>`. Use a **secret** rather
+than a variable: a webhook URL is a credential, and an SMTP URL carries a
+password. The value is the URL, or JSON when more is needed.
+
+```
+NOTIFY_OPS      https://hooks.slack.com/services/T000/B000/xxxx
+NOTIFY_ALERTS   https://discord.com/api/webhooks/000/xxxx
+NOTIFY_TEAMS    https://prod-12.westeurope.logic.azure.com/workflows/xxxx
+NOTIFY_CHAT     {"url":"https://chat.example.com/hooks/xxxx","type":"mattermost"}
+NOTIFY_PAGER    {"url":"https://example.com/hook","events":["down"]}
+NOTIFY_MAIL     {"url":"smtps://status@example.com:password@mail.example.com:465",
+                 "to":"ops@example.com, oncall@example.com"}
+```
+
+The kind follows from the URL, so Slack, Discord and Teams need nothing else:
+
+| Kind | Recognised by | Payload |
+| --- | --- | --- |
+| `slack` | `hooks.slack.com` | Message with a coloured attachment |
+| `discord` | `discord.com`, `discordapp.com` | Embed linking to the issue |
+| `teams` | `logic.azure.com` (Workflows), `office.com` (retired connectors) | Adaptive card, or a message card for a connector URL |
+| `mattermost` | set `"type":"mattermost"` — a self-hosted host cannot be recognised | Same as Slack, which Mattermost accepts |
+| `email` | `smtp://`, `smtps://` | Plain text mail |
+| `custom` | anything else | The event as JSON, below |
+
+A notification goes out when an incident opens and when it closes, so the same
+`INCIDENT_THRESHOLD` that decides an issue is worth opening decides this too; a
+single failed check notifies nobody. Restrict a destination to some of that with
+`"events"`, any of `down`, `degraded` and `up`. A failing destination is logged
+and skipped — it never fails the run or blocks the others.
+
+### Custom webhooks
+
+A custom endpoint receives the event itself:
+
+```json
+{
+  "event": "down",
+  "status": "down",
+  "previousStatus": "up",
+  "monitor": { "slug": "db", "name": "Database", "url": "https://db.example.com" },
+  "error": "connect ECONNREFUSED",
+  "code": null,
+  "downFor": null,
+  "issue": { "number": 42, "url": "https://github.com/acme/status/issues/42" },
+  "site": "Acme Status",
+  "at": "2026-03-01T12:00:00Z",
+  "text": "🔴 Database is down"
+}
+```
+
+`downFor` is filled in on recovery, `error` and `code` on an outage. A private
+monitor sends no URL, the same as everywhere else. Add `"headers"` for an
+endpoint that wants a token, and `"method"` if it does not want `POST`.
+
+### Email
+
+`smtps://` opens TLS immediately, usually on port 465. `smtp://` connects in
+the clear and upgrades with STARTTLS when the server offers it, usually on 587.
+Credentials go in the URL, percent-encoded — `@` in a username becomes `%40`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `to` | required | Recipients, a list or a comma-separated string |
+| `from` | the login, if it is an address | Envelope and header sender |
+| `insecureTls` | `false` | Accept a certificate no public CA signed |
+
+AUTH PLAIN and AUTH LOGIN are supported, and no authentication at all when the
+URL carries no credentials.
+
 ## How it works
 
 `.github/workflows/uptime.yml` runs every five minutes:
@@ -173,7 +245,8 @@ which is what happens when no group is configured at all.
    appends the results to `history/` in the order the monitors are listed.
 2. `scripts/incidents.mjs` opens an issue when a monitor has failed
    `INCIDENT_THRESHOLD` times in a row, comments the downtime and closes the
-   issue on recovery, and writes a snapshot of recent incidents.
+   issue on recovery, notifies whatever `NOTIFY_*` configures, and writes a
+   snapshot of recent incidents.
 3. The history is committed back to the branch.
 4. If anything the page shows changed, the Pages workflow deploys
    immediately; otherwise the site rebuilds once a day.
@@ -243,7 +316,8 @@ node --test
 ```
 
 Covers configuration parsing, the redaction that keeps a private monitor's URL
-out of issues, and the daily rollup. No dependencies, and the Test workflow
+out of issues, the daily rollup, the notification payloads, and the SMTP client
+against a server that speaks the protocol back. No dependencies, and the Test workflow
 runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes

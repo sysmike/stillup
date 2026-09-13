@@ -10,9 +10,12 @@
 // kept out of the published site and out of incident issues.
 
 import { MAINTENANCE_LABEL } from './issues.mjs';
+import { targetType } from './notify.mjs';
 
 const MONITOR_PREFIX = 'MONITOR_';
 const GROUP_PREFIX = 'GROUP_';
+const NOTIFY_PREFIX = 'NOTIFY_';
+const NOTIFY_EVENTS = ['down', 'degraded', 'up'];
 const DEFAULT_INCIDENT_LABELS = ['status', 'incident'];
 
 const DEFAULTS = {
@@ -147,6 +150,49 @@ export function loadConfig(varsJson, secretsJson) {
     groups[match?.group || titleize(slug)] = { order };
   }
 
+  // NOTIFY_<NAME> is a webhook URL, or JSON when the kind cannot be read off
+  // the URL — a self-hosted Mattermost — or when only some events are wanted.
+  const notifications = [];
+  for (const [name, raw] of Object.entries({ ...vars, ...secrets })) {
+    if (!name.startsWith(NOTIFY_PREFIX)) continue;
+    const parsed = parseValue(name, raw);
+    if (!parsed) continue;
+    if (!parsed.url) throw new Error(`Variable ${name} has no url`);
+
+    const events = (Array.isArray(parsed.events) ? parsed.events : NOTIFY_EVENTS)
+      .map((event) => String(event).toLowerCase())
+      .filter((event) => NOTIFY_EVENTS.includes(event));
+
+    const type = parsed.type ? String(parsed.type).toLowerCase() : targetType(parsed.url);
+
+    // A mailbox needs recipients, and a sender the server will accept. The
+    // login name stands in for the sender when it is an address itself.
+    let to = [];
+    let from = parsed.from || '';
+    if (type === 'email') {
+      to = (Array.isArray(parsed.to) ? parsed.to : String(parsed.to || '').split(','))
+        .map((address) => address.trim())
+        .filter(Boolean);
+      if (!to.length) throw new Error(`Variable ${name} has no recipient, add "to"`);
+      if (!from) {
+        const login = decodeURIComponent(new URL(parsed.url).username || '');
+        if (!login.includes('@')) throw new Error(`Variable ${name} has no sender, add "from"`);
+        from = login;
+      }
+    }
+
+    notifications.push({
+      name: titleize(slugify(name.slice(NOTIFY_PREFIX.length))),
+      url: parsed.url,
+      type,
+      events: events.length ? events : NOTIFY_EVENTS,
+      headers: parsed.headers || {},
+      method: String(parsed.method || 'POST').toUpperCase(),
+      ...(type === 'email' ? { to, from, insecureTls: parsed.insecureTls === true } : {}),
+    });
+  }
+  notifications.sort((a, b) => a.name.localeCompare(b.name));
+
   const site = {
     title: vars.SITE_TITLE || 'Status',
     description: vars.SITE_DESCRIPTION || '',
@@ -167,5 +213,5 @@ export function loadConfig(varsJson, secretsJson) {
     labels: labels.length ? labels : DEFAULT_INCIDENT_LABELS,
   };
 
-  return { site, groups, monitors, incidents };
+  return { site, groups, monitors, incidents, notifications };
 }
