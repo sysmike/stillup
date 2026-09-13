@@ -49,7 +49,7 @@ the certificate.
 | `SITE_LINK` | none | Link in the footer |
 | `SITE_LOGO` | none | Logo URL shown next to the title |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
-| `SITE_LANG` | `en` | Language tag the page's dates and durations are worded in |
+| `SITE_LANG` | `en` | Language the page is shown in: `en` or `de`, see [Languages](#languages) |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
@@ -166,6 +166,47 @@ GROUP_PUBLIC     {"order": 2}
 Groups are ordered the way monitors are: by `order` ascending, defaulting to
 `100`. Groups left without one keep the position their monitors give them,
 which is what happens when no group is configured at all.
+
+## Languages
+
+The page's own text lives in `site/lang/`, one file per language, and
+`SITE_LANG` chooses between them. English and German ship with it.
+
+Times are shown in the reader's own time zone whatever the language is, and the
+wording of dates and durations follows the language rather than the reader's
+browser, so a label and the time beside it never disagree.
+
+To add one, copy `site/lang/en.mjs` to the language's tag, translate the values,
+and add the tag to `LANGUAGES` in `site/lang/i18n.mjs`:
+
+```js
+// site/lang/fr.mjs
+export default {
+  'status.up': 'Opérationnel',
+  'incidents.title': 'Incidents',
+  // …
+};
+```
+
+A key you leave out falls back to English, so a half-finished translation is
+still usable. A value that counts something is an object of plural forms rather
+than a string, and the forms a language needs are its own — English has `one`
+and `other`, Polish also needs `few` and `many`:
+
+```js
+'strip.checks': { one: '{count} check', other: '{count} checks' },
+```
+
+`node --test` checks that every language has the keys English has, that no
+translation introduces a placeholder the page never fills in, and that every key
+the page asks for exists.
+
+Two things stay in the language they were written in: the text of an issue,
+which is whatever whoever filed it wrote, and the title and body of an issue the
+workflow opens for an outage, which are English. Notifications are English too.
+
+If you translate `.github/ISSUE_TEMPLATE/maintenance.yml`, set
+`MONITORS_HEADING` to match its monitors field — see [Incidents](#how-it-works).
 
 ## Notifications
 
@@ -346,8 +387,9 @@ node --test
 ```
 
 Covers configuration parsing, the redaction that keeps a private monitor's URL
-out of issues, the daily rollup, the notification payloads, and the SMTP client
-against a server that speaks the protocol back. No dependencies, and the Test workflow
+out of issues, the daily rollup, the notification payloads, the language
+dictionaries, and the SMTP client against a server that speaks the protocol
+back. No dependencies, and the Test workflow
 runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes
@@ -370,8 +412,8 @@ runs the same command on every push that touches `scripts/` or `test/`.
 - Times are shown in the reader's own time zone, with the full timestamp and
   the zone's name in the tooltip of an incident's date. The day a bar stands for
   is a UTC day, and stays labelled as one wherever it is read from. How dates
-  and durations are worded follows `SITE_LANG`, not the reader's browser, so
-  they match the rest of the page — which is written in English.
+  and durations are worded follows `SITE_LANG` rather than the reader's browser,
+  so a label and the time beside it never disagree.
 
 ## License
 

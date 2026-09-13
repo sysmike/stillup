@@ -29,6 +29,15 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'api', 'monitor'), { recursive: true });
 cpSync(join(ROOT, 'site'), OUT, { recursive: true });
 
+// app.js needs the language before it can ask for anything, so it is stamped on
+// the document rather than waited for in the data. That also lets the right
+// dictionary load alongside the first fetch instead of after it.
+const indexFile = join(OUT, 'index.html');
+const index = readFileSync(indexFile, 'utf8');
+const stamped = index.replace(/<html lang="[^"]*"/, `<html lang="${site.lang}"`);
+if (stamped === index && site.lang !== 'en') throw new Error('index.html has no lang attribute to set');
+writeFileSync(indexFile, stamped);
+
 const summaryMonitors = monitors.map((monitor) => {
   const daily = readDaily(monitor.slug);
   const days = dayViews(daily, keys);

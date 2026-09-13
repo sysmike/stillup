@@ -1,19 +1,16 @@
-// Kept short: this label shares a fixed column with the figure beside it.
-const STATUS_TEXT = {
-  up: 'Operational',
-  degraded: 'Degraded',
-  partial: 'Partial outage',
-  down: 'Down',
-  none: 'No data',
-};
+import { english, load } from './lang/i18n.mjs';
 
-const BANNER_TEXT = {
-  up: 'All systems operational',
-  degraded: 'Degraded performance',
-  partial: 'Partial outage',
-  down: 'Major outage',
-  none: 'Waiting for the first check',
-};
+// The page speaks one language, named on the document by the build. English
+// stands in until the dictionary for it has loaded, which happens alongside the
+// first fetch rather than after it.
+let i18n = english;
+const t = (key, params) => i18n.t(key, params);
+const dictionary = load(document.documentElement.lang);
+
+// A status that is not one of the five is shown as it arrived, rather than as a
+// missing key.
+const STATUSES = ['up', 'degraded', 'partial', 'down', 'none'];
+const statusText = (status) => (STATUSES.includes(status) ? t(`status.${status}`) : status);
 
 // The tab icon carries the overall status, so a pinned tab still reports it.
 const STATUS_COLOR = {
@@ -54,26 +51,9 @@ const svg = (tag, attrs = {}) => {
 // with them read as a fault. Which zone a time is shown in is the reader's: a
 // status page is read from wherever the reader happens to be, and one
 // converting UTC in their head is one reading it wrong.
-let LOCALE = 'en';
-
-// Formatters cost more to construct than to use, and the strip asks for one per
-// hovered bar, so they are kept. The locale is part of the key because it is
-// only known once the configuration has loaded.
-const FORMATTERS = new Map();
-
-function formatter(kind, name, options) {
-  const key = `${name}:${LOCALE}:${JSON.stringify(options)}`;
-  let made = FORMATTERS.get(key);
-  if (!made) {
-    made = new kind(LOCALE, options);
-    FORMATTERS.set(key, made);
-  }
-  return made;
-}
-
-const relativeFormat = (options) => formatter(Intl.RelativeTimeFormat, 'relative', options);
-const numberFormat = (options) => formatter(Intl.NumberFormat, 'number', options);
-const dateFormat = (options) => formatter(Intl.DateTimeFormat, 'date', options);
+const relativeFormat = (options) => i18n.formatter(Intl.RelativeTimeFormat, 'relative', options);
+const numberFormat = (options) => i18n.formatter(Intl.NumberFormat, 'number', options);
+const dateFormat = (options) => i18n.formatter(Intl.DateTimeFormat, 'date', options);
 
 // Each entry is what divides the unit before it, paired with the unit that
 // division reaches. A year is deliberately absent: an incident that old is
@@ -89,7 +69,7 @@ const SCALES = [
 // "2 minutes ago" has three forms in Polish, and none of them is built by
 // appending an s.
 function relative(iso) {
-  if (!iso) return 'never';
+  if (!iso) return t('common.never');
   const seconds = Math.round((Date.now() - new Date(iso)) / 1000);
   // Zero seconds is the locale's own word for now, which beats a count that
   // would read "in 0 seconds".
@@ -205,16 +185,16 @@ function fillBars(bars, monitor, width, gap, count, targetBar = 0) {
     if (extra) bar.style.flex = `0 0 ${base + extra}px`;
     bar.addEventListener('mouseenter', (event) => {
       const ratio = day.checks ? ((day.checks - day.down) / day.checks) * 100 : null;
-      showTooltip(event, [
-        el('b', null, formatDay(day.date)),
-        el(
-          'span',
-          null,
-          day.checks
-            ? `${ratio.toFixed(2)}% up · ${day.checks} checks${day.avg ? ` · ${day.avg}ms avg` : ''}`
-            : 'No data',
-        ),
-      ]);
+      const summary = day.checks
+        ? [
+            t('strip.uptime', { percent: ratio.toFixed(2) }),
+            t('strip.checks', { count: day.checks }),
+            day.avg ? t('strip.avg', { ms: day.avg }) : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : t('strip.noData');
+      showTooltip(event, [el('b', null, formatDay(day.date)), el('span', null, summary)]);
     });
     bar.addEventListener('mouseleave', hideTooltip);
     bars.append(bar);
@@ -226,7 +206,8 @@ function renderBars(monitor, width, gap, count) {
   const bars = el('div', 'bars');
   const painted = fillBars(bars, monitor, width, gap, count);
   const scale = el('div', 'scale');
-  scale.append(el('span', null, `${painted.days} days ago`), el('span'), el('span', null, 'Today'));
+  const ago = relativeFormat({ numeric: 'always' }).format(-painted.days, 'day');
+  scale.append(el('span', null, ago), el('span'), el('span', null, t('strip.today')));
   return [bars, scale];
 }
 
@@ -234,7 +215,7 @@ function renderChart(container, payload) {
   const points = payload.points.filter(([, , ms]) => ms > 0);
   container.replaceChildren();
   if (points.length < 2) {
-    container.append(el('p', 'detail-empty', 'Not enough response time data yet.'));
+    container.append(el('p', 'detail-empty', t('chart.empty')));
     return;
   }
 
@@ -262,8 +243,8 @@ function renderChart(container, payload) {
   const legend = el('div', 'chart-legend');
   const average = Math.round(points.reduce((total, [, , ms]) => total + ms, 0) / points.length);
   legend.append(
-    el('span', null, `${payload.rawDays}d response time`),
-    el('span', null, `min ${min}ms · avg ${average}ms · max ${max}ms`),
+    el('span', null, t('chart.range', { days: payload.rawDays })),
+    el('span', null, t('chart.legend', { min, avg: average, max })),
   );
   container.append(legend);
 }
@@ -315,7 +296,7 @@ function commentCount(count) {
     }),
   );
   tag.append(mark, el('span', null, String(count)));
-  tag.title = `${count} comment${count === 1 ? '' : 's'}`;
+  tag.title = t('comments.count', { count });
   return tag;
 }
 
@@ -357,9 +338,12 @@ function renderIncidentItem(incident, active = false) {
       'incident-state',
       incident.state === 'open'
         ? incident.maintenance
-          ? `Maintenance, opened ${relative(incident.createdAt)}`
-          : `Down for ${elapsed(incident.createdAt, Date.now())}`
-        : `${incident.maintenance ? 'Completed' : 'Resolved'} ${relative(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`,
+          ? t('incident.maintenanceOpened', { when: relative(incident.createdAt) })
+          : t('incident.downFor', { duration: elapsed(incident.createdAt, Date.now()) })
+        : t(incident.maintenance ? 'incident.completed' : 'incident.resolved', {
+            when: relative(incident.closedAt),
+            duration: elapsed(incident.createdAt, incident.closedAt),
+          }),
     ),
   );
   body.append(meta);
@@ -451,14 +435,14 @@ function renderComments(incident) {
   if (!comments.length) return;
 
   const section = el('div', 'detail-section');
-  const heading = el('h3', 'section-title', comments.length === 1 ? '1 comment' : `${comments.length} comments`);
+  const heading = el('h3', 'section-title', t('comments.count', { count: comments.length }));
   section.append(heading);
 
   for (const comment of comments) {
     const entry = el('div', 'comment');
     const head = el('div', 'comment-head');
     head.append(el('span', 'comment-author', comment.author));
-    if (comment.bot) head.append(el('span', 'comment-bot', 'bot'));
+    if (comment.bot) head.append(el('span', 'comment-bot', t('comments.bot')));
     head.append(el('span', 'comment-time', relative(comment.createdAt)));
     entry.append(head);
 
@@ -472,7 +456,7 @@ function renderComments(incident) {
   const hidden = (incident.commentCount || comments.length) - comments.length;
   if (hidden > 0) {
     const more = el('p', 'detail-empty');
-    more.append(`${hidden} earlier comment${hidden === 1 ? '' : 's'} on GitHub`);
+    more.append(t('comments.more', { count: hidden }));
     section.append(more);
   }
 
@@ -491,17 +475,17 @@ function openIncident(number) {
   detailBody.append(head);
 
   const meta = el('p', 'detail-meta');
-  meta.append(el('span', `tag tag-${state}`, state));
-  meta.append(
-    el(
-      'span',
-      null,
-      ` ${incident.maintenance ? 'opened' : 'started'} ${formatDate(incident.createdAt)}` +
-        (incident.closedAt
-          ? ` · ${incident.maintenance ? 'completed' : 'resolved'} ${formatDate(incident.closedAt)} after ${elapsed(incident.createdAt, incident.closedAt)}`
-          : ` · ${relative(incident.createdAt)}`),
-    ),
-  );
+  meta.append(el('span', `tag tag-${state}`, t(`incident.state.${state}`)));
+  const opened = t(incident.maintenance ? 'incident.opened' : 'incident.started', {
+    date: formatDate(incident.createdAt),
+  });
+  const closed = incident.closedAt
+    ? t(incident.maintenance ? 'incident.completedOn' : 'incident.resolvedOn', {
+        date: formatDate(incident.closedAt),
+        duration: elapsed(incident.createdAt, incident.closedAt),
+      })
+    : relative(incident.createdAt);
+  meta.append(el('span', null, ` ${opened} · ${closed}`));
   detailBody.append(meta);
 
   const affected = (incident.monitors || [])
@@ -526,13 +510,13 @@ function openIncident(number) {
   const section = el('div', 'detail-section');
   const repeated = affected.length && data.monitorsHeading ? [data.monitorsHeading.toLowerCase()] : [];
   if (incident.body) renderBody(section, incident.body, repeated);
-  if (!section.childElementCount) section.append(el('p', 'detail-empty', 'No description was given.'));
+  if (!section.childElementCount) section.append(el('p', 'detail-empty', t('incident.noBody')));
   detailBody.append(section);
 
   renderComments(incident);
 
   const footer = el('p', 'detail-meta detail-source');
-  const link = el('a', null, `Issue #${incident.number} on GitHub`);
+  const link = el('a', null, t('incident.issueLink', { number: incident.number }));
   link.href = incident.url;
   link.rel = 'noopener';
   link.target = '_blank';
@@ -555,8 +539,8 @@ async function openDetail(slug) {
   detailBody.append(head);
 
   const meta = el('p', 'detail-meta');
-  meta.append(el('span', null, STATUS_TEXT[monitor.status] || monitor.status));
-  if (monitor.since) meta.append(el('span', null, ` since ${formatDate(monitor.since)}`));
+  meta.append(el('span', null, statusText(monitor.status)));
+  if (monitor.since) meta.append(el('span', null, ` ${t('detail.since', { date: formatDate(monitor.since) })}`));
   if (monitor.group) meta.append(el('span', null, ` · ${monitor.group}`));
   if (monitor.url) {
     meta.append(el('span', null, ' · '));
@@ -570,21 +554,21 @@ async function openDetail(slug) {
 
   const figures = el('div', 'detail-figures');
   figures.append(
-    figure(formatUptime(monitor.uptime.day), 'Today'),
-    figure(formatUptime(monitor.uptime.week), '7 days'),
-    figure(formatUptime(monitor.uptime.month), '30 days'),
-    figure(monitor.lastMs === null ? '—' : `${monitor.lastMs}ms`, 'Last check'),
+    figure(formatUptime(monitor.uptime.day), t('figure.today')),
+    figure(formatUptime(monitor.uptime.week), t('figure.days', { count: 7 })),
+    figure(formatUptime(monitor.uptime.month), t('figure.days', { count: 30 })),
+    figure(monitor.lastMs === null ? '—' : `${monitor.lastMs}ms`, t('figure.lastCheck')),
   );
   detailBody.append(figures);
 
   const history = el('div', 'detail-section');
-  history.append(el('h3', 'section-title', `${data.days} day history`));
+  history.append(el('h3', 'section-title', t('detail.history', { days: data.days })));
   detailBody.append(history);
 
   const chartSection = el('div', 'detail-section');
-  chartSection.append(el('h3', 'section-title', 'Response time'));
+  chartSection.append(el('h3', 'section-title', t('detail.responseTime')));
   const chart = el('div', 'chart');
-  chart.append(el('p', 'detail-empty', 'Loading…'));
+  chart.append(el('p', 'detail-empty', t('common.loading')));
   chartSection.append(chart);
   detailBody.append(chartSection);
 
@@ -592,14 +576,14 @@ async function openDetail(slug) {
     (incident) => incident.monitors?.includes(slug) || incident.monitor === slug,
   );
   const incidentSection = el('div', 'detail-section');
-  incidentSection.append(el('h3', 'section-title', 'Incidents'));
+  incidentSection.append(el('h3', 'section-title', t('incidents.title')));
   if (related.length) {
     const list = el('ul', 'incident-list');
     // An open incident looks open wherever it is listed.
     for (const incident of related) list.append(renderIncidentItem(incident, incident.state === 'open'));
     incidentSection.append(list);
   } else {
-    incidentSection.append(el('p', 'detail-empty', 'No incidents recorded for this monitor.'));
+    incidentSection.append(el('p', 'detail-empty', t('detail.noIncidents')));
   }
   detailBody.append(incidentSection);
 
@@ -618,7 +602,7 @@ async function openDetail(slug) {
     }
     renderChart(chart, chartCache.get(slug));
   } catch {
-    chart.replaceChildren(el('p', 'detail-empty', 'Could not load response times.'));
+    chart.replaceChildren(el('p', 'detail-empty', t('chart.failed')));
   }
 }
 
@@ -675,14 +659,14 @@ function renderIncidents(incidents) {
     .slice(0, PAST_INCIDENTS);
 
   list.replaceChildren();
-  if (active.length && past.length) list.append(el('li', 'event-group', 'Active'));
+  if (active.length && past.length) list.append(el('li', 'event-group', t('incidents.active')));
   for (const incident of active) list.append(renderIncidentItem(incident, true));
-  if (active.length && past.length) list.append(el('li', 'event-group', 'Earlier'));
+  if (active.length && past.length) list.append(el('li', 'event-group', t('incidents.earlier')));
   for (const incident of past) list.append(renderIncidentItem(incident));
 
   // Nothing having happened is the good news a status page is there to give,
   // so it is said rather than left to an absent section.
-  empty.textContent = `No incidents in the last ${INCIDENT_DAYS} days.`;
+  empty.textContent = t('incidents.empty', { count: INCIDENT_DAYS });
   empty.hidden = recent.length > 0;
   more.hidden = !data.issuesUrl;
   if (data.issuesUrl) document.getElementById('incidents-link').href = data.issuesUrl;
@@ -692,10 +676,10 @@ function renderIncidents(incidents) {
 function summarize(monitors) {
   const broken = monitors.filter((monitor) => monitor.status === 'down' || monitor.status === 'partial');
   const degraded = monitors.filter((monitor) => monitor.status === 'degraded');
-  const parts = [`${monitors.length} monitors`];
-  if (broken.length) parts.push(`${broken.length} down`);
-  else if (degraded.length) parts.push(`${degraded.length} degraded`);
-  else parts.push('all operational');
+  const parts = [t('count.monitors', { count: monitors.length })];
+  if (broken.length) parts.push(t('group.down', { count: broken.length }));
+  else if (degraded.length) parts.push(t('group.degraded', { count: degraded.length }));
+  else parts.push(t('group.allOperational'));
   return parts.join(' · ');
 }
 
@@ -732,7 +716,7 @@ function renderRow(monitor) {
   row.append(bars);
   registerStrip(bars, monitor, 2);
 
-  row.append(el('span', 'row-status', STATUS_TEXT[monitor.status] || monitor.status));
+  row.append(el('span', 'row-status', statusText(monitor.status)));
   row.append(el('span', 'row-uptime', formatUptime(monitor.uptime.month)));
   makeOpener(row, monitor);
   return row;
@@ -825,12 +809,27 @@ function setFavicon(status) {
   document.getElementById('favicon').href = `data:image/svg+xml,${encodeURIComponent(mark)}`;
 }
 
-function render() {
-  // Before anything is formatted: the locale is part of every formatter's cache
-  // key, so a late change would leave the ones already built behind.
-  LOCALE = data.site.lang || 'en';
-  document.documentElement.lang = LOCALE;
+// The shell's own text, which lives in the document rather than being built
+// here. The English in index.html is what a reader without JavaScript gets, and
+// what shows for the moment before the dictionary arrives.
+function applyStatic() {
+  document.documentElement.lang = i18n.locale;
+  document.querySelector('meta[name="description"]').content = t('meta.description');
+  for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = t(node.dataset.i18n);
+  for (const node of document.querySelectorAll('[data-i18n-label]')) {
+    node.setAttribute('aria-label', t(node.dataset.i18nLabel));
+  }
 
+  // One sentence with an element inside it. The template is split on the
+  // placeholder rather than assembled in a fixed order, so a translation can
+  // put the variable name where its own grammar wants it.
+  const [before, after] = t('empty.monitors').split('{name}');
+  document
+    .getElementById('empty')
+    .replaceChildren(before, el('code', null, 'MONITOR_<NAME>'), after ?? '');
+}
+
+function render() {
   document.title = data.site.title;
   document.getElementById('brand-title').textContent = data.site.title;
   if (data.site.logo) {
@@ -847,14 +846,19 @@ function render() {
   const banner = document.getElementById('banner');
   banner.className = `banner banner-${data.overall}`;
   setFavicon(data.overall);
-  document.getElementById('banner-title').textContent = BANNER_TEXT[data.overall];
+  document.getElementById('banner-title').textContent = t(`banner.${data.overall}`);
   const down = data.monitors.filter((monitor) => monitor.status === 'down');
   document.getElementById('banner-meta').textContent =
     data.site.description ||
-    (down.length ? `${down.map((monitor) => monitor.name).join(', ')} not responding` : `${data.monitors.length} monitors`);
+    (down.length
+      ? t('banner.notResponding', {
+          count: down.length,
+          monitors: down.map((monitor) => monitor.name).join(', '),
+        })
+      : t('count.monitors', { count: data.monitors.length }));
 
   document.getElementById('empty').hidden = data.monitors.length > 0;
-  document.getElementById('updated').textContent = `Checked ${relative(data.generatedAt)}`;
+  document.getElementById('updated').textContent = t('footer.checked', { when: relative(data.generatedAt) });
 
   renderIncidents(data.incidents);
   renderMonitors();
@@ -881,11 +885,15 @@ addEventListener('resize', () => {
 try {
   const response = await fetch('api/summary.json', { cache: 'no-cache' });
   data = await response.json();
+  // Both were started together, so waiting on the dictionary here costs nothing
+  // the fetch has not already spent.
+  i18n = await dictionary;
+  applyStatic();
   if (!stored && data.site.theme !== 'auto') root.dataset.theme = data.site.theme;
   render();
   syncDialog();
   setInterval(() => {
-    document.getElementById('updated').textContent = `Checked ${relative(data.generatedAt)}`;
+    document.getElementById('updated').textContent = t('footer.checked', { when: relative(data.generatedAt) });
   }, 30000);
   refresh();
   setInterval(refresh, 60000);
@@ -894,6 +902,8 @@ try {
   });
 } catch (error) {
   setFavicon('none');
-  document.getElementById('banner-title').textContent = 'Status data unavailable';
+  i18n = await dictionary.catch(() => english);
+  applyStatic();
+  document.getElementById('banner-title').textContent = t('error.title');
   document.getElementById('banner-meta').textContent = String(error.message || error);
 }

@@ -9,6 +9,7 @@
 // defined as a secret instead of a variable is private by default: its URL is
 // kept out of the published site and out of incident issues.
 
+import { LANGUAGES } from '../../site/lang/i18n.mjs';
 import { DEFAULT_MONITORS_HEADING, MAINTENANCE_LABEL } from './issues.mjs';
 import { TARGET_TYPES } from './notify.mjs';
 
@@ -93,6 +94,17 @@ export function redact(text, url) {
   }
   // Connection errors quote the resolved address rather than the host name.
   return result.replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b|\[[0-9a-f:]+\]/gi, '[redacted]');
+}
+
+// A language the site has no dictionary for would leave the page in English
+// with no explanation, so it is refused while the site is being built.
+function language(value) {
+  const lang = (value || '').trim();
+  if (!lang) return 'en';
+  if (!LANGUAGES.includes(lang)) {
+    throw new Error(`SITE_LANG is "${lang}", expected one of ${LANGUAGES.join(', ')}`);
+  }
+  return lang;
 }
 
 // `vars` and `secrets` are the JSON serializations of the Actions contexts of
@@ -205,10 +217,10 @@ export function loadConfig(varsJson, secretsJson) {
 
   const site = {
     title: vars.SITE_TITLE || 'Status',
-    // The language the page's own text is written in, which is what decides how
-    // dates and durations are worded. Times are still shown in the reader's
-    // zone, whatever this says.
-    lang: (vars.SITE_LANG || '').trim() || 'en',
+    // The language the page's own text is written in, which is what decides its
+    // labels and how dates and durations are worded. Times are still shown in
+    // the reader's zone, whatever this says.
+    lang: language(vars.SITE_LANG),
     description: vars.SITE_DESCRIPTION || '',
     link: vars.SITE_LINK || '',
     logo: vars.SITE_LOGO || '',
