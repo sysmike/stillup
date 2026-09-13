@@ -179,3 +179,62 @@ test('a label list that leaves nothing behind falls back to the defaults', () =>
   ]);
   assert.deepEqual(loadConfig(vars({ INCIDENT_LABELS: ' , ' })).incidents.labels, ['status', 'incident']);
 });
+
+test('a destination declares its kind, and a plain URL is a custom webhook', () => {
+  const { notifications } = loadConfig(
+    vars({
+      NOTIFY_OPS: JSON.stringify({ url: 'https://hooks.slack.com/services/T/B/X', type: 'slack' }),
+      NOTIFY_PAGER: 'https://example.com/hook',
+      NOTIFY_MAIL: JSON.stringify({ url: 'smtps://status@example.com:pw@mail.example.com', to: 'ops@example.com' }),
+    }),
+  );
+  assert.deepEqual(
+    notifications.map((target) => [target.name, target.type]),
+    [
+      ['Mail', 'email'],
+      ['Ops', 'slack'],
+      ['Pager', 'custom'],
+    ],
+  );
+});
+
+test('a Slack URL without a type is not taken for Slack', () => {
+  const { notifications } = loadConfig(vars({ NOTIFY_OPS: 'https://hooks.slack.com/services/T/B/X' }));
+  assert.equal(notifications[0].type, 'custom');
+});
+
+test('a misspelled kind is rejected rather than silently sent as JSON', () => {
+  assert.throws(
+    () => loadConfig(vars({ NOTIFY_OPS: JSON.stringify({ url: 'https://example.com', type: 'slak' }) })),
+    /unknown type "slak"/,
+  );
+});
+
+test('an email target needs recipients and a sender', () => {
+  assert.throws(
+    () => loadConfig(vars({ NOTIFY_MAIL: JSON.stringify({ url: 'smtp://mail.example.com' }) })),
+    /no recipient/,
+  );
+  assert.throws(
+    () => loadConfig(vars({ NOTIFY_MAIL: JSON.stringify({ url: 'smtp://mail.example.com', to: 'ops@example.com' }) })),
+    /no sender/,
+  );
+  const { notifications } = loadConfig(
+    vars({
+      NOTIFY_MAIL: JSON.stringify({ url: 'smtp://status%40example.com:pw@mail.example.com', to: 'a@x.com, b@x.com' }),
+    }),
+  );
+  assert.deepEqual(notifications[0].to, ['a@x.com', 'b@x.com']);
+  assert.equal(notifications[0].from, 'status@example.com', 'the login stands in for the sender');
+});
+
+test('a destination hears about every event unless it says otherwise', () => {
+  const { notifications } = loadConfig(
+    vars({
+      NOTIFY_ALL: 'https://example.com/a',
+      NOTIFY_SOME: JSON.stringify({ url: 'https://example.com/b', events: ['down', 'nonsense'] }),
+    }),
+  );
+  assert.deepEqual(notifications[0].events, ['down', 'degraded', 'up']);
+  assert.deepEqual(notifications[1].events, ['down']);
+});

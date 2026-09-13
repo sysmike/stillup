@@ -11,24 +11,11 @@ const MARKS = { down: '🔴', degraded: '🟠', up: '🟢' };
 
 export const SEND_TIMEOUT = 10000;
 
-// A suffix test alone would take notdiscord.com for Discord, so a match has to
-// land on a dot boundary or on the domain itself.
-const under = (host, domain) => host === domain || host.endsWith(`.${domain}`);
-
-export function targetType(url) {
-  if (/^smtps?:/i.test(url)) return 'email';
-  const host = (() => {
-    try {
-      return new URL(url).host.toLowerCase().replace(/:\d+$/, '');
-    } catch {
-      return '';
-    }
-  })();
-  if (under(host, 'hooks.slack.com')) return 'slack';
-  if (under(host, 'discord.com') || under(host, 'discordapp.com')) return 'discord';
-  if (under(host, 'logic.azure.com') || under(host, 'office.com')) return 'teams';
-  return 'custom';
-}
+// Every kind is named in the configuration. Nothing is read off the URL: a
+// self-hosted Mattermost or Teams proxy is indistinguishable from anything
+// else, and a guess that lands wrong sends a payload the receiver drops
+// without saying why.
+export const TARGET_TYPES = ['slack', 'mattermost', 'discord', 'teams', 'teams-connector', 'email', 'custom'];
 
 // What every builder writes from. `event.status` is where the monitor is now,
 // so a recovery is 'up' and an outage is 'down' or 'degraded'.
@@ -75,10 +62,9 @@ const discordPayload = (event) => ({
   ],
 });
 
-// A Workflows webhook accepts the adaptive card an Office 365 connector never
-// understood, so the shape follows the URL rather than a setting.
-function teamsPayload(event, url) {
-  const legacy = /office\.com/i.test(url);
+// A Workflows webhook accepts an adaptive card; a retired Office 365 connector
+// only ever understood a message card.
+function teamsPayload(event, legacy) {
   const facts = lines(event).map((line) => {
     const [name, ...rest] = line.split(': ');
     return { name, value: rest.join(': ') };
@@ -139,7 +125,9 @@ export function buildPayload(target, event) {
     case 'discord':
       return discordPayload(event);
     case 'teams':
-      return teamsPayload(event, target.url);
+      return teamsPayload(event, false);
+    case 'teams-connector':
+      return teamsPayload(event, true);
     default:
       return customPayload(event);
   }
@@ -157,6 +145,13 @@ export function buildMail(target, event) {
 // or misconfigured is reported and the next one is tried.
 export async function send(target, event, fetchImpl = fetch) {
   if (target.type === 'email') {
+    // GitHub's runners are Azure VMs, where outbound port 25 is blocked. The
+    // attempt is still made — a self-hosted runner is free of that — but the
+    // stall that follows is worth explaining in the log first.
+    if (new URL(target.url).port === '25') {
+      console.log(`${target.name}: port 25 is blocked on GitHub's runners, use 587 or 465`);
+    }
+
     const { subject, text } = buildMail(target, event);
     await sendMail({
       url: target.url,

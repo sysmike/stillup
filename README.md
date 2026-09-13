@@ -172,25 +172,32 @@ than a variable: a webhook URL is a credential, and an SMTP URL carries a
 password. The value is the URL, or JSON when more is needed.
 
 ```
-NOTIFY_OPS      https://hooks.slack.com/services/T000/B000/xxxx
-NOTIFY_ALERTS   https://discord.com/api/webhooks/000/xxxx
-NOTIFY_TEAMS    https://prod-12.westeurope.logic.azure.com/workflows/xxxx
+NOTIFY_OPS      {"url":"https://hooks.slack.com/services/T000/B000/xxxx","type":"slack"}
+NOTIFY_ALERTS   {"url":"https://discord.com/api/webhooks/000/xxxx","type":"discord"}
+NOTIFY_TEAMS    {"url":"https://prod-12.westeurope.logic.azure.com/workflows/xxxx","type":"teams"}
 NOTIFY_CHAT     {"url":"https://chat.example.com/hooks/xxxx","type":"mattermost"}
 NOTIFY_PAGER    {"url":"https://example.com/hook","events":["down"]}
 NOTIFY_MAIL     {"url":"smtps://status@example.com:password@mail.example.com:465",
                  "to":"ops@example.com, oncall@example.com"}
 ```
 
-The kind follows from the URL, so Slack, Discord and Teams need nothing else:
+Every destination says what it is. A URL is never inspected to guess: a
+self-hosted Mattermost, a Teams proxy and a plain endpoint look alike, and a
+guess that lands wrong sends a payload the receiver drops without saying why.
 
-| Kind | Recognised by | Payload |
-| --- | --- | --- |
-| `slack` | `hooks.slack.com` | Message with a coloured attachment |
-| `discord` | `discord.com`, `discordapp.com` | Embed linking to the issue |
-| `teams` | `logic.azure.com` (Workflows), `office.com` (retired connectors) | Adaptive card, or a message card for a connector URL |
-| `mattermost` | set `"type":"mattermost"` — a self-hosted host cannot be recognised | Same as Slack, which Mattermost accepts |
-| `email` | `smtp://`, `smtps://` | Plain text mail |
-| `custom` | anything else | The event as JSON, below |
+| `type` | Payload |
+| --- | --- |
+| `slack` | Message with a coloured attachment |
+| `mattermost` | The same, which Mattermost accepts |
+| `discord` | Embed linking to the issue |
+| `teams` | Adaptive card, for a Workflows webhook |
+| `teams-connector` | Message card, for a retired Office 365 connector |
+| `email` | Plain text mail |
+| `custom` | The event as JSON, below |
+
+`type` may be left out in two cases: an `smtp://` or `smtps://` URL is mail, and
+anything else without a type is a `custom` webhook. A type that is not in the
+table fails the run rather than quietly going out as JSON.
 
 A notification goes out when an incident opens and when it closes, so the same
 `INCIDENT_THRESHOLD` that decides an issue is worth opening decides this too; a
@@ -236,6 +243,15 @@ Credentials go in the URL, percent-encoded — `@` in a username becomes `%40`.
 
 AUTH PLAIN and AUTH LOGIN are supported, and no authentication at all when the
 URL carries no credentials.
+
+**Port 25 does not work on GitHub's runners.** They are Azure virtual machines,
+and [Azure blocks outbound SMTP on port 25](https://learn.microsoft.com/en-us/azure/virtual-network/troubleshoot-outbound-smtp-connectivity)
+for every subscription type except Enterprise Agreement and MCA-E. Submission
+ports are not blocked: use 587 (`smtp://`, STARTTLS) or 465 (`smtps://`), which
+is what a mail server offers for authenticated sending anyway. Port 25 is the
+default for server-to-server delivery, not for this. A self-hosted runner has no
+such restriction. A blocked port shows up as `no reply within 20000ms` in the
+log, and costs the run those 20 seconds.
 
 ## How it works
 

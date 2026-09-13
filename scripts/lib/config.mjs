@@ -10,7 +10,7 @@
 // kept out of the published site and out of incident issues.
 
 import { MAINTENANCE_LABEL } from './issues.mjs';
-import { targetType } from './notify.mjs';
+import { TARGET_TYPES } from './notify.mjs';
 
 const MONITOR_PREFIX = 'MONITOR_';
 const GROUP_PREFIX = 'GROUP_';
@@ -163,7 +163,17 @@ export function loadConfig(varsJson, secretsJson) {
       .map((event) => String(event).toLowerCase())
       .filter((event) => NOTIFY_EVENTS.includes(event));
 
-    const type = parsed.type ? String(parsed.type).toLowerCase() : targetType(parsed.url);
+    // A destination says what it is. Only the URL scheme of a mailbox is
+    // unambiguous enough to stand in for that; everything else without a type
+    // is a plain webhook receiving the event as JSON.
+    const type = parsed.type
+      ? String(parsed.type).toLowerCase()
+      : /^smtps?:/i.test(parsed.url)
+        ? 'email'
+        : 'custom';
+    if (!TARGET_TYPES.includes(type)) {
+      throw new Error(`Variable ${name} has an unknown type "${type}", expected one of ${TARGET_TYPES.join(', ')}`);
+    }
 
     // A mailbox needs recipients, and a sender the server will accept. The
     // login name stands in for the sender when it is an address itself.

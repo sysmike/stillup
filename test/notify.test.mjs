@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPayload, headline, notify, targetType } from '../scripts/lib/notify.mjs';
+import { TARGET_TYPES, buildPayload, headline, notify } from '../scripts/lib/notify.mjs';
 
 const target = (type, url = 'https://example.com/hook') => ({
   name: 'Test',
@@ -27,19 +27,11 @@ const outage = {
 
 const recovery = { ...outage, status: 'up', error: null, code: 200, downFor: '1h 35m' };
 
-test('the kind of a target follows from its URL', () => {
-  assert.equal(targetType('https://hooks.slack.com/services/T/B/X'), 'slack');
-  assert.equal(targetType('https://discord.com/api/webhooks/1/abc'), 'discord');
-  assert.equal(targetType('https://discordapp.com/api/webhooks/1/abc'), 'discord');
-  assert.equal(targetType('https://acme.webhook.office.com/webhookb2/abc'), 'teams');
-  assert.equal(targetType('https://prod-12.westeurope.logic.azure.com/workflows/abc'), 'teams');
-  assert.equal(targetType('https://chat.example.com/hooks/xyz'), 'custom');
-  assert.equal(targetType('not a url'), 'custom');
-});
-
-test('a host that merely contains a known name is not that kind', () => {
-  assert.equal(targetType('https://hooks.slack.com.evil.example/x'), 'custom');
-  assert.equal(targetType('https://notdiscord.com/api/webhooks/1/abc'), 'custom');
+test('every kind a destination may declare has a builder', () => {
+  for (const type of TARGET_TYPES) {
+    if (type === 'email') continue; // mail is built by buildMail, not buildPayload
+    assert.ok(buildPayload(target(type), outage), `${type} builds a payload`);
+  }
 });
 
 test('the headline says what happened', () => {
@@ -71,7 +63,7 @@ test('Discord gets an embed that links to the issue', () => {
   assert.equal(payload.embeds[0].timestamp, '2026-03-01T12:00:00Z');
 });
 
-test('a Teams Workflows URL gets an adaptive card', () => {
+test('Teams gets an adaptive card', () => {
   const payload = buildPayload(target('teams', 'https://prod-12.westeurope.logic.azure.com/workflows/x'), outage);
   assert.equal(payload.type, 'message');
   const card = payload.attachments[0].content;
@@ -80,8 +72,8 @@ test('a Teams Workflows URL gets an adaptive card', () => {
   assert.deepEqual(card.body[1].facts[0], { title: 'Error:', value: 'connect ECONNREFUSED' });
 });
 
-test('a retired Office 365 connector URL still gets a message card', () => {
-  const payload = buildPayload(target('teams', 'https://acme.webhook.office.com/webhookb2/x'), outage);
+test('a retired Office 365 connector still gets a message card', () => {
+  const payload = buildPayload(target('teams-connector', 'https://acme.webhook.office.com/webhookb2/x'), outage);
   assert.equal(payload['@type'], 'MessageCard');
   assert.equal(payload.themeColor, 'f04438');
   assert.deepEqual(payload.sections[0].facts[0], { name: 'Error', value: 'connect ECONNREFUSED' });
