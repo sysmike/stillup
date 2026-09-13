@@ -611,9 +611,15 @@ function renderIncidents(incidents) {
     (incident) => incident.state === 'open' || Date.now() - new Date(incident.createdAt) < INCIDENT_DAYS * 86400000,
   );
   // An outage that is still open leads, whatever its date: one opened days ago
-  // would otherwise sink below incidents that have since been resolved.
-  const active = recent.filter((incident) => incident.state === 'open');
-  const past = recent.filter((incident) => incident.state !== 'open').slice(0, PAST_INCIDENTS);
+  // would otherwise sink below incidents that have since been resolved. Within
+  // each group the newest comes first, rather than trusting the order the
+  // snapshot happens to have.
+  const newestFirst = (a, b) => b.createdAt.localeCompare(a.createdAt);
+  const active = recent.filter((incident) => incident.state === 'open').sort(newestFirst);
+  const past = recent
+    .filter((incident) => incident.state !== 'open')
+    .sort(newestFirst)
+    .slice(0, PAST_INCIDENTS);
 
   list.replaceChildren();
   if (active.length && past.length) list.append(el('li', 'event-group', 'Active'));

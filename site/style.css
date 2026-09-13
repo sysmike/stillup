@@ -204,26 +204,21 @@ main.shell {
   padding: 0;
 }
 
-/* A timeline: a marker per entry, joined by a line down to the next one. */
+/* A marker per entry, with a rule between one entry and the next. */
 .event {
-  position: relative;
   display: flex;
   gap: 14px;
-  padding-bottom: 22px;
+  padding-bottom: 16px;
 }
 
 .event:last-child {
   padding-bottom: 0;
 }
 
-.event:not(:last-child)::before {
-  content: '';
-  position: absolute;
-  left: 14px;
-  top: 32px;
-  bottom: -3px;
-  width: 1px;
-  background: color-mix(in srgb, var(--text) 16%, transparent);
+/* An active entry is a box of its own and brings its own border. */
+.event:not(.is-active):not(:last-child) {
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .event-icon {
@@ -311,10 +306,6 @@ main.shell {
 
 .event.is-active + .event.is-active {
   margin-top: 10px;
-}
-
-.event.is-active::before {
-  display: none;
 }
 
 .event.is-active .incident-title {
