@@ -128,28 +128,6 @@ name, the display name, the group and description, and the status, uptime and
 response times. Set `link` if the monitor should point somewhere anyway. Adding
 `"private": true` to a monitor defined as a variable has the same effect.
 
-## Monitor details
-
-Clicking a monitor opens its details: current status, uptime over today, 7 and
-30 days, the day by day history, the response time of the last 7 days, and the
-incidents that refer to it. Its description, if it has one, is shown there
-too. The page itself shows the last 30 days; the history in the details is the
-full 90. The monitored URL is a link in there rather than on the row, so
-clicking a monitor shows its history instead of navigating away.
-
-Each monitor has its own address, `…/#/<slug>`, which opens the page with that
-monitor already in front. Incidents are matched by the marker in the issues
-this workflow opens, and by the **Affected monitors** field of the maintenance
-template, where a monitor's name or slug is resolved to the right monitor.
-
-Clicking an incident, in the list at the bottom of the page or in a monitor's
-details, opens the incident itself at `…/#/incident/<number>`: its state, how
-long it lasted, the monitors it affects as buttons that lead to them, and the
-description from the issue. Nobody is sent to GitHub to read it, though a link
-to the issue sits at the end for anyone who wants to comment. Issue text is
-written by whoever filed it, so it is rendered as text: headings, lists, bold,
-code and http links survive, and markup does not.
-
 ## Groups
 
 A monitor with a `group` is listed under that heading, with a line at its right
@@ -198,18 +176,6 @@ instead of loading one:
 
 A `src` may also be a path, for a script you commit under `site/` and serve from
 the page's own origin.
-
-The build refuses a script it can tell will not work — a `javascript:` or `data:`
-URL, an entry with neither `src` nor `code`, an attribute name that is not one,
-or inline code containing `</script`, which would end the tag early and cut the
-page in half. You hear about it as a failed build rather than as a page that
-stopped rendering.
-
-Two things worth knowing. This runs on your readers' browsers: a third-party
-analytics script sees them, and whatever you write here is in the page's source
-for anyone to read, so there is nothing to be gained by putting it in a secret
-rather than a variable. And the variable is as trusted as the repository —
-anyone who can set it can already commit to the workflow that builds the page.
 
 ## Languages
 
@@ -263,11 +229,6 @@ a translation is finished before it ships. The suite also checks that no
 translation introduces a placeholder the page never fills in, that none drops
 one the page depends on, and that every key the page asks for exists.
 
-What stays in the language it was written in is anything a person wrote: the
-body of an issue filed by hand, and your monitor and group names. Issues the
-workflow opens for an outage are translated, but only as they are written — an
-issue opened before you changed `SITE_LANG` keeps the words it was opened with.
-
 One thing a language file cannot reach is the maintenance issue template, since
 GitHub renders it from the repository rather than from the site. A German
 version is ready to copy over:
@@ -295,10 +256,6 @@ NOTIFY_PAGER    {"url":"https://example.com/hook","events":["down"]}
 NOTIFY_MAIL     {"url":"smtps://status@example.com:password@mail.example.com:465",
                  "to":"ops@example.com, oncall@example.com"}
 ```
-
-Every destination says what it is. A URL is never inspected to guess: a
-self-hosted Mattermost, a Teams proxy and a plain endpoint look alike, and a
-guess that lands wrong sends a payload the receiver drops without saying why.
 
 | `type` | Payload |
 | --- | --- |
@@ -359,14 +316,9 @@ Credentials go in the URL, percent-encoded — `@` in a username becomes `%40`.
 AUTH PLAIN and AUTH LOGIN are supported, and no authentication at all when the
 URL carries no credentials.
 
-**Port 25 does not work on GitHub's runners.** They are Azure virtual machines,
-and [Azure blocks outbound SMTP on port 25](https://learn.microsoft.com/en-us/azure/virtual-network/troubleshoot-outbound-smtp-connectivity)
-for every subscription type except Enterprise Agreement and MCA-E. Submission
-ports are not blocked: use 587 (`smtp://`, STARTTLS) or 465 (`smtps://`), which
-is what a mail server offers for authenticated sending anyway. Port 25 is the
-default for server-to-server delivery, not for this. A self-hosted runner has no
-such restriction. A blocked port shows up as `no reply within 20000ms` in the
-log, and costs the run those 20 seconds.
+**Port 25 does not work on GitHub's runners.**
+Submission ports are not blocked: use 587 (`smtp://`, STARTTLS) or 465 (`smtps://`), which
+is what a mail server offers for authenticated sending anyway.
 
 ## How it works
 
@@ -470,17 +422,8 @@ runs the same command on every push that touches `scripts/` or `test/`.
   dropped under load, and GitHub disables schedules in repositories with no
   activity for 60 days. For an exact interval, trigger the workflow from a
   machine you control: [docs/external-scheduler.md](docs/external-scheduler.md).
-- Actions minutes are free on public repositories. On a private repository
-  every job is rounded up to a whole minute, so the cost follows the number of
-  runs, not their duration: the default schedule is roughly 290 job-minutes a
-  day, nearly all of it the five minute check. Lengthen that cron to cut it, or
-  keep the repository public and define sensitive monitors as secrets.
-- The workflows use the Node.js that ships with the runner image, currently
-  22.x, so there is no toolchain setup step.
 - Uptime percentages count degraded checks as up, in the figures and in the
   day tooltip alike; only a failed check counts against them.
-- Checks run from GitHub's runners, so they only see outages that are visible
-  from the public internet.
 - The page names its modules with `modulepreload` in the head. Without that a
   browser finds each import only after parsing the one before it, and the
   request for the status data queues behind the whole chain. The data itself is
