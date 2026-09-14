@@ -4,8 +4,10 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { load } from '../site/lang/i18n.mjs';
 import { loadConfig } from './lib/config.mjs';
 import { RAW_DAYS, readDaily, readRaw } from './lib/history.mjs';
+import { stamp } from './lib/shell.mjs';
 import { dayKeys, dayViews, uptimeWindows } from './lib/summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -29,14 +31,22 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'api', 'monitor'), { recursive: true });
 cpSync(join(ROOT, 'site'), OUT, { recursive: true });
 
-// app.js needs the language before it can ask for anything, so it is stamped on
-// the document rather than waited for in the data. That also lets the right
-// dictionary load alongside the first fetch instead of after it.
+// The language has to be on the document before app.js can ask for anything,
+// which also lets the right dictionary load alongside the first fetch rather
+// than after it. The rest is for whatever never runs a script — a chat client
+// unfurling the link, a search result — which would otherwise be told this is
+// a page called "Status" in English, whatever it was configured as.
+const i18n = await load(site.lang);
 const indexFile = join(OUT, 'index.html');
-const index = readFileSync(indexFile, 'utf8');
-const stamped = index.replace(/<html lang="[^"]*"/, `<html lang="${site.lang}"`);
-if (stamped === index && site.lang !== 'en') throw new Error('index.html has no lang attribute to set');
-writeFileSync(indexFile, stamped);
+writeFileSync(
+  indexFile,
+  stamp(readFileSync(indexFile, 'utf8'), {
+    title: site.title,
+    lang: i18n.locale,
+    dir: i18n.dir,
+    t: i18n.t,
+  }),
+);
 
 const summaryMonitors = monitors.map((monitor) => {
   const daily = readDaily(monitor.slug);

@@ -803,6 +803,7 @@ function setFavicon(status) {
 // what shows for the moment before the dictionary arrives.
 function applyStatic() {
   document.documentElement.lang = i18n.locale;
+  document.documentElement.dir = i18n.dir;
   document.querySelector('meta[name="description"]').content = t('meta.description');
   for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = t(node.dataset.i18n);
   for (const node of document.querySelectorAll('[data-i18n-label]')) {

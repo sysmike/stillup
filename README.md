@@ -175,6 +175,11 @@ The page reads those files in the browser and the workflows read them on the
 runner, so a site set to a language sounds like itself everywhere: on the page,
 in the issues it opens, and in the notifications it sends.
 
+The build writes the title, the description and the shell's own text into
+`index.html` as well, so a chat client unfurling the link or a search result
+crawling the page gets what the site was configured as rather than the defaults
+in the file.
+
 Times are shown in the reader's own time zone whatever the language is, and the
 wording of dates and durations follows the language rather than the reader's
 browser, so a label and the time beside it never disagree.
@@ -191,6 +196,11 @@ export default {
 };
 ```
 
+The page sets `lang` and `dir` from the language, and the stylesheet uses
+logical properties throughout, so a right-to-left language mirrors the layout
+rather than needing its own rules. No such language ships yet, so expect to find
+some polishing to do if you add the first one.
+
 A key you leave out falls back to English, so a half-finished translation is
 still usable. A value that counts something is an object of plural forms rather
 than a string, and the forms a language needs are its own — English has `one`
@@ -205,13 +215,21 @@ translation introduces a placeholder the page never fills in, and that every key
 the page asks for exists.
 
 What stays in the language it was written in is anything a person wrote: the
-body of an issue filed by hand, the maintenance form, and your monitor and group
-names. Issues the workflow opens for an outage are translated, but only as they
+body of an issue filed by hand, and your monitor and group names. Issues the workflow opens for an outage are translated, but only as they
 are written — an issue opened before you changed `SITE_LANG` keeps the words it
 was opened with.
 
-If you translate `.github/ISSUE_TEMPLATE/maintenance.yml`, set
-`MONITORS_HEADING` to match its monitors field — see [Incidents](#how-it-works).
+One thing a language file cannot reach is the maintenance issue template, since
+GitHub renders it from the repository rather than from the site. A German
+version is ready to copy over:
+
+```bash
+cp docs/maintenance.de.yml .github/ISSUE_TEMPLATE/maintenance.yml
+```
+
+Then set `MONITORS_HEADING` to `Betroffene Monitore`. Translating the template
+yourself works the same way: whatever you call the monitors field, that is what
+`MONITORS_HEADING` has to say — see [How it works](#how-it-works).
 
 ## Notifications
 

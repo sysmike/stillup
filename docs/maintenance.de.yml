@@ -1,0 +1,57 @@
+# Die deutsche Fassung von .github/ISSUE_TEMPLATE/maintenance.yml.
+#
+# Zum Verwenden über die englische Vorlage kopieren:
+#
+#     cp docs/maintenance.de.yml .github/ISSUE_TEMPLATE/maintenance.yml
+#
+# und die Variable MONITORS_HEADING auf "Betroffene Monitore" setzen — daran
+# erkennt die Seite, welche Monitore ein Issue betrifft. GitHub macht aus der
+# Beschriftung des Feldes die Überschrift im Issue-Text; stimmen die beiden
+# nicht überein, bleibt die Verknüpfung kommentarlos aus.
+#
+# Die Labels in `labels:` bleiben unübersetzt: `maintenance` ist reserviert und
+# der erste Eintrag muss zu INCIDENT_LABELS passen.
+
+name: Geplante Wartung
+description: Ein Wartungsfenster auf der Statusseite ankündigen
+title: 'Wartung: '
+labels: ['status', 'maintenance']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Dieses Issue erscheint auf der Statusseite, solange es offen ist, und
+        bleibt bis 30 Tage nach seiner Erstellung gelistet. Schließe es, wenn
+        die Arbeiten erledigt sind. Die Seite übernimmt das beim nächsten
+        Neuaufbau, innerhalb von 30 Minuten.
+
+        Halte den Titel kurz und nenne darin das Zeitfenster, zum Beispiel
+        `Wartung: Datenbank-Upgrade, 14. März 02:00 UTC`.
+  - type: input
+    id: window
+    attributes:
+      label: Zeitfenster
+      description: Beginn und Ende, in UTC.
+      placeholder: 2026-03-14 02:00 - 04:00 UTC
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Erwartete Auswirkung
+      placeholder: Die API antwortet für bis zu zehn Minuten mit 503, während die Datenbank umschaltet.
+    validations:
+      required: true
+  # Die Beschriftung dieses Feldes wird zur Überschrift, nach der gesucht wird.
+  # Wer sie ändert, muss MONITORS_HEADING mitändern.
+  - type: input
+    id: monitors
+    attributes:
+      label: Betroffene Monitore
+      description: Namen wie auf der Statusseite.
+      placeholder: Public API, Dokumentation
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anmerkungen
+      description: Rollback-Plan, Ansprechpartner, Ticketnummern.

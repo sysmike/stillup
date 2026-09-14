@@ -148,7 +148,7 @@ main.shell {
   gap: 14px;
   padding: 18px 20px;
   border: 1px solid var(--border);
-  border-left: 4px solid var(--status, var(--none));
+  border-inline-start: 4px solid var(--status, var(--none));
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
@@ -338,7 +338,7 @@ main.shell {
   font: inherit;
   font-weight: 500;
   color: var(--text);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 
@@ -752,7 +752,7 @@ main.shell {
 .detail-close {
   position: absolute;
   top: 16px;
-  right: 16px;
+  inset-inline-end: 16px;
 }
 
 .detail-head {
@@ -762,7 +762,7 @@ main.shell {
   margin: 0;
   font-size: 19px;
   font-weight: 600;
-  padding-right: 40px;
+  padding-inline-end: 40px;
 }
 
 .detail-meta {
@@ -911,7 +911,7 @@ main.shell {
 
 .body-list {
   margin: 0 0 8px;
-  padding-left: 20px;
+  padding-inline-start: 20px;
   font-size: 14px;
   line-height: 1.6;
 }

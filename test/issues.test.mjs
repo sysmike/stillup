@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   DEFAULT_MONITORS_HEADING,
   affectedMonitors,
@@ -74,4 +75,28 @@ test('a field left empty names nothing', () => {
 
 test('an issue the workflow opened is linked by its marker alone', () => {
   assert.deepEqual(affectedMonitors(`${marker('api')}\nPublic API is down`, monitors), ['api']);
+});
+
+// The translated template and the instructions for it are edited apart, and a
+// mismatch between them shows up as monitors quietly not linking.
+const labelOf = (file, field) =>
+  readFileSync(new URL(file, import.meta.url), 'utf8').match(
+    new RegExp(`id: ${field}\\n\\s+attributes:\\n\\s+label: (.+)`),
+  )?.[1];
+
+test('the English template names the heading the parser looks for by default', () => {
+  const label = labelOf('../.github/ISSUE_TEMPLATE/maintenance.yml', 'monitors');
+  assert.equal(label, DEFAULT_MONITORS_HEADING);
+});
+
+test('the German template works with the heading its instructions name', () => {
+  const file = '../docs/maintenance.de.yml';
+  const label = labelOf(file, 'monitors');
+  assert.equal(label, 'Betroffene Monitore');
+
+  const told = readFileSync(new URL(file, import.meta.url), 'utf8').match(/MONITORS_HEADING auf "([^"]+)"/)?.[1];
+  assert.equal(told, label, 'the file tells the reader to set a heading it does not use');
+
+  const body = `### Zeitfenster\n\nHeute Nacht\n\n### ${label}\n\nPublic API`;
+  assert.deepEqual(affectedMonitors(body, monitors, label), ['api']);
 });

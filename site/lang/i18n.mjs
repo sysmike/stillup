@@ -14,6 +14,13 @@ export const LANGUAGES = ['en', 'de'];
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 
+// Languages written right to left. Intl.Locale's textInfo answers this on its
+// own, but not yet in every browser the page runs in, and getting it wrong
+// mirrors the whole layout with nothing to say why.
+const RTL = ['ar', 'ckb', 'dv', 'fa', 'he', 'ps', 'sd', 'ur', 'yi'];
+
+export const direction = (locale) => (RTL.includes(String(locale).split('-')[0]) ? 'rtl' : 'ltr');
+
 export function create(locale, dict) {
   const plural = new Intl.PluralRules(locale);
   const formatters = new Map();
@@ -61,7 +68,7 @@ export function create(locale, dict) {
     return `${amount(Math.floor(hours / 24), 'day', 'narrow')} ${amount(hours % 24, 'hour', 'narrow')}`;
   }
 
-  return { locale, t, formatter, duration };
+  return { locale, dir: direction(locale), t, formatter, duration };
 }
 
 export const english = create('en', en);

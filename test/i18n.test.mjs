@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import en from '../site/lang/en.mjs';
-import { LANGUAGES, create, english, load } from '../site/lang/i18n.mjs';
+import { LANGUAGES, create, direction, english, load } from '../site/lang/i18n.mjs';
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 const forms = (value) => (typeof value === 'string' ? [value] : Object.values(value));
@@ -114,4 +114,23 @@ test('every key the page builds from a status or a state exists', () => {
   for (const state of ['open', 'maintenance', 'resolved']) {
     assert.ok(`incident.state.${state}` in en, `incident.state.${state}`);
   }
+});
+
+test('a language says which way it is written', async () => {
+  assert.equal(direction('en'), 'ltr');
+  assert.equal(direction('de'), 'ltr');
+  assert.equal(direction('ar'), 'rtl');
+  assert.equal(direction('he-IL'), 'rtl');
+  assert.equal((await load('de')).dir, 'ltr');
+  assert.equal(create('fa', en).dir, 'rtl');
+});
+
+test('the stylesheet mirrors rather than assuming a side', () => {
+  const css = readFileSync(new URL('../site/style.css', import.meta.url), 'utf8');
+  const physical = [...css.matchAll(/^\s*((?:margin|padding|border)-(?:left|right)|left|right|text-align:\s*(?:left|right))/gm)];
+  assert.deepEqual(
+    physical.map((match) => match[1]),
+    [],
+    'a physical side does not flip for a right-to-left language; use the logical property',
+  );
 });
