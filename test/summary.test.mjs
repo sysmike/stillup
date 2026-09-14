@@ -85,12 +85,11 @@ test('the uptime windows each cover their own span', () => {
   assert.equal(windows.day, 100);
   assert.equal(windows.week, 100, 'the bad day falls outside the last 7');
   assert.equal(windows.month, 98.33);
-  assert.equal(windows.quarter, windows.month, 'the window defaults to every key given');
 });
 
 test('a monitor with no history reports null rather than a figure', () => {
   const keys = dayKeys(30, new Date('2026-03-30T00:00:00Z'));
-  assert.deepEqual(uptimeWindows([], keys), { day: null, week: null, month: null, quarter: null });
+  assert.deepEqual(uptimeWindows([], keys), { day: null, week: null, month: null });
 });
 
 test('history older than the window does not count towards the figures', () => {

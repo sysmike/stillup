@@ -723,6 +723,10 @@ function renderGroup(group, monitors) {
 }
 
 function renderMonitors() {
+  // A bar under the pointer is about to be removed, and removing it fires no
+  // mouseleave: the tooltip would be left standing over a row that no longer
+  // exists until something else happened to dismiss it.
+  hideTooltip();
   monitorsEl.replaceChildren();
   const groups = new Map();
   for (const monitor of data.monitors) {
@@ -739,6 +743,8 @@ function renderMonitors() {
   fillPendingStrips();
 }
 
+// The build works this out too, for the snapshot it writes; the two have to
+// agree or the banner would change on the first refresh. See scripts/build.mjs.
 function computeOverall(monitors) {
   const active = monitors.filter((monitor) => monitor.status !== 'none');
   if (active.some((monitor) => monitor.status === 'down')) {

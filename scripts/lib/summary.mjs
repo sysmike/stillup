@@ -51,9 +51,10 @@ export function dayViews(daily, keys) {
   return keys.map((date) => dayView(date, byDate.get(date)));
 }
 
-// The four figures the detail dialog shows, over the last N days including
-// today. `keys` is the full window the caller works in.
-export function uptimeWindows(daily, keys, quarter = keys.length) {
+// The three figures the detail dialog shows, over the last N days including
+// today. `keys` is the full window the caller works in; a figure over more days
+// than the dialog has room for would only be carried around unread.
+export function uptimeWindows(daily, keys) {
   const window = (count) => {
     const dates = new Set(keys.slice(-count));
     return daily.filter((day) => dates.has(day.date));
@@ -62,7 +63,6 @@ export function uptimeWindows(daily, keys, quarter = keys.length) {
     day: uptime(window(1)),
     week: uptime(window(7)),
     month: uptime(window(30)),
-    quarter: uptime(window(quarter)),
   };
 }
 

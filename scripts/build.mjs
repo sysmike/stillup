@@ -77,11 +77,13 @@ const summaryMonitors = monitors.map((monitor) => {
     lastCheck: latest?.timestamp || null,
     lastMs: latest?.ms || null, // 0 means nothing was measured, as for a dummy
     lastCode: latest?.code ?? null,
-    uptime: uptimeWindows(daily, keys, DAYS),
+    uptime: uptimeWindows(daily, keys),
     days,
   };
 });
 
+// The page works this out again whenever it refreshes from live.json, so the
+// two have to agree. See computeOverall in site/app.js.
 const active = summaryMonitors.filter((monitor) => monitor.status !== 'none');
 const overall = active.some((monitor) => monitor.status === 'down')
   ? active.every((monitor) => monitor.status === 'down')
