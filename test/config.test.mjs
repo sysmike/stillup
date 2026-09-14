@@ -257,3 +257,38 @@ test('the heading the maintenance form writes is configurable', () => {
   // An empty variable is the same as an unset one.
   assert.equal(loadConfig(JSON.stringify({ MONITORS_HEADING: '' })).incidents.monitorsHeading, 'Affected monitors');
 });
+
+test('a script is a URL, an object, or a list of either', () => {
+  const of = (value) => loadConfig(vars({ SITE_SCRIPTS: value })).site.scripts;
+
+  assert.deepEqual(of(undefined), []);
+  assert.deepEqual(of('  '), []);
+  assert.deepEqual(of('https://cloud.umami.is/script.js'), [{ src: 'https://cloud.umami.is/script.js' }]);
+
+  const umami = { src: 'https://cloud.umami.is/script.js', defer: true, 'data-website-id': 'abc' };
+  assert.deepEqual(of(JSON.stringify(umami)), [umami]);
+  assert.deepEqual(of(JSON.stringify([umami, { code: 'ping()' }])), [umami, { code: 'ping()' }]);
+});
+
+test('a script may come from the site rather than a vendor', () => {
+  const of = (value) => loadConfig(vars({ SITE_SCRIPTS: value })).site.scripts;
+  assert.deepEqual(of('/custom.js'), [{ src: '/custom.js' }]);
+  assert.deepEqual(of('custom.js'), [{ src: 'custom.js' }]);
+});
+
+test('a script that would not work is refused while the site is built', () => {
+  const fails = (value, pattern) =>
+    assert.throws(() => loadConfig(vars({ SITE_SCRIPTS: value })), pattern, `${value} should be refused`);
+
+  fails('javascript:alert(1)', /javascript: src/);
+  fails('data:text/javascript,alert(1)', /data: src/);
+  fails('{"defer":true}', /neither "src" nor "code"/);
+  fails('[{"src":"https://a.example/x.js"},{"nope":1}]', /SITE_SCRIPTS\[1\]/);
+  fails('{"src":"https://a.example/x.js","data website id":"abc"}', /unusable attribute name/);
+  fails('[{', /not valid JSON/);
+
+  // The closing tag ends the element wherever it appears, so an inline script
+  // carrying one would cut the document in half.
+  fails('{"code":"var a = \\"</script><img src=x onerror=alert(1)>\\";"}', /would end the tag early/);
+  fails('{"code":"</SCRIPT >"}', /would end the tag early/);
+});

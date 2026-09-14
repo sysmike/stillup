@@ -52,6 +52,7 @@ the certificate.
 | `SITE_LANG` | `en` | Language of the page, its issues and its notifications: `en` or `de`, see [Languages](#languages) |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
+| `SITE_SCRIPTS` | none | Tags added to the page's head, for analytics — see [Custom scripts](#custom-scripts) |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
 
 ## Monitors
@@ -166,6 +167,49 @@ GROUP_PUBLIC     {"order": 2}
 Groups are ordered the way monitors are: by `order` ascending, defaulting to
 `100`. Groups left without one keep the position their monitors give them,
 which is what happens when no group is configured at all.
+
+## Custom scripts
+
+`SITE_SCRIPTS` adds tags to the end of the page's head. The common case is an
+analytics snippet, and the common case is a bare URL:
+
+```
+SITE_SCRIPTS = https://cloud.umami.is/script.js
+```
+
+Most vendors want an attribute alongside it, which is what the object form is
+for. Every key other than `code` becomes an attribute, so a snippet translates
+across a field at a time:
+
+```json
+{ "src": "https://cloud.umami.is/script.js", "defer": true, "data-website-id": "abc-123" }
+```
+
+`true` writes the attribute on its own — `defer`, `async` — and `false` leaves it
+out. A JSON array adds more than one tag, and `code` carries a script inline
+instead of loading one:
+
+```json
+[
+  { "src": "https://plausible.io/js/script.js", "defer": true, "data-domain": "status.example.com" },
+  { "code": "document.addEventListener('click', () => {});" }
+]
+```
+
+A `src` may also be a path, for a script you commit under `site/` and serve from
+the page's own origin.
+
+The build refuses a script it can tell will not work — a `javascript:` or `data:`
+URL, an entry with neither `src` nor `code`, an attribute name that is not one,
+or inline code containing `</script`, which would end the tag early and cut the
+page in half. You hear about it as a failed build rather than as a page that
+stopped rendering.
+
+Two things worth knowing. This runs on your readers' browsers: a third-party
+analytics script sees them, and whatever you write here is in the page's source
+for anyone to read, so there is nothing to be gained by putting it in a secret
+rather than a variable. And the variable is as trusted as the repository —
+anyone who can set it can already commit to the workflow that builds the page.
 
 ## Languages
 
@@ -411,8 +455,8 @@ node --test
 
 Covers configuration parsing, the redaction that keeps a private monitor's URL
 out of issues, the daily rollup, the notification payloads in each language, the
-language dictionaries themselves, and the SMTP client against a server that
-speaks the protocol back. No dependencies, and the Test workflow
+language dictionaries themselves, what the build writes into the page's head,
+and the SMTP client against a server that speaks the protocol back. No dependencies, and the Test workflow
 runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes

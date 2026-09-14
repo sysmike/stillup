@@ -70,3 +70,39 @@ test('the English shell is left as it was written', () => {
   const out = build({ title: 'Status' });
   assert.equal(out.replace(/ dir="ltr"/, ''), shell.replace(/<title>[^<]*<\/title>/, '<title>Status</title>'));
 });
+
+test('a head with nothing added to it is left alone', () => {
+  assert.equal(build({ scripts: [] }), build());
+  // The page's own module tag is in the body; nothing should join it in the head.
+  const head = build().slice(0, build().indexOf('</head>'));
+  assert.doesNotMatch(head, /<script/);
+});
+
+test('an analytics snippet arrives as the vendor writes it', () => {
+  const out = build({
+    scripts: [{ src: 'https://cloud.umami.is/script.js', defer: true, 'data-website-id': 'abc-123' }],
+  });
+  assert.match(out, /<script src="https:\/\/cloud\.umami\.is\/script\.js" defer data-website-id="abc-123"><\/script>/);
+  // In the head, after the page's own tags, and still inside it.
+  assert.match(out, /<link rel="stylesheet" href="style\.css" \/>\n\s*<script[^>]*><\/script>\n\s*<\/head>/);
+});
+
+test('an inline script keeps its code', () => {
+  assert.match(build({ scripts: [{ code: 'window.x = 1 < 2 && 3 > 2;' }] }), /<script>window\.x = 1 < 2 && 3 > 2;<\/script>/);
+});
+
+test('a false attribute is absent rather than written as false', () => {
+  const out = build({ scripts: [{ src: 'a.js', defer: false, async: true }] });
+  assert.match(out, /<script src="a\.js" async><\/script>/);
+});
+
+test('an attribute value cannot close the tag it sits in', () => {
+  const out = build({ scripts: [{ src: 'a.js', 'data-id': '" onload="steal()' }] });
+  assert.match(out, /data-id="&quot; onload=&quot;steal\(\)"/);
+  assert.doesNotMatch(out, /onload="steal/);
+});
+
+test('more than one script keeps its order', () => {
+  const out = build({ scripts: [{ src: 'first.js' }, { src: 'second.js' }] });
+  assert.ok(out.indexOf('first.js') < out.indexOf('second.js'));
+});

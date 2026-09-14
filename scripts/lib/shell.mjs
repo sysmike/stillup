@@ -14,7 +14,28 @@ const escape = (value) =>
 // be matched without parsing the document.
 const TAG = /<([a-z][a-z0-9]*)((?:\s[^>]*)?)>/gi;
 
-export function stamp(html, { title, lang, dir, t }) {
+// Whatever SITE_SCRIPTS asked for, rendered into tags. The values are escaped
+// here as well as checked in the configuration: this is the last place before
+// they become markup, and it is cheap.
+export function renderScripts(scripts = []) {
+  return scripts
+    .map((script) => {
+      const attributes = Object.entries(script)
+        .filter(([name]) => name !== 'code')
+        .map(([name, value]) => {
+          // `true` is how a bare attribute is written — defer, async — and a
+          // false one is simply absent.
+          if (value === true) return ` ${name}`;
+          if (value === false || value === null || value === undefined) return '';
+          return ` ${name}="${escape(value)}"`;
+        })
+        .join('');
+      return `<script${attributes}>${script.code || ''}</script>`;
+    })
+    .join('\n    ');
+}
+
+export function stamp(html, { title, lang, dir, t, scripts = [] }) {
   let out = html;
 
   out = out.replace(/<html\b([^>]*)>/i, (whole, attrs) => {
@@ -44,6 +65,10 @@ export function stamp(html, { title, lang, dir, t }) {
     if (!key) return whole;
     return `<${tag}${attrs.replace(/aria-label="[^"]*"/, `aria-label="${escape(t(key))}"`)}>`;
   });
+
+  // Last in the head, so a snippet that expects the page's own tags to be there
+  // finds them, and the stylesheet is already on its way.
+  if (scripts.length) out = out.replace('</head>', `  ${renderScripts(scripts)}\n  </head>`);
 
   return out;
 }

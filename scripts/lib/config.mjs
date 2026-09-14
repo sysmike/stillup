@@ -96,6 +96,64 @@ export function redact(text, url) {
   return result.replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b|\[[0-9a-f:]+\]/gi, '[redacted]');
 }
 
+// SITE_SCRIPTS adds tags to the page's head: an analytics snippet, most often.
+// A bare URL is the whole of the common case; an object carries the attributes
+// a vendor asks for alongside it, and a list adds more than one.
+//
+// Whoever sets this can already commit to the repository that builds the page,
+// so the question is not whether they may run a script but whether a mistake in
+// one fails loudly. It is checked here so a typo stops the build rather than
+// quietly producing a page that no longer works.
+const ATTRIBUTE = /^[A-Za-z][A-Za-z0-9:_.-]*$/;
+const RESERVED = new Set(['code']);
+
+function scripts(raw) {
+  const value = (raw || '').trim();
+  if (!value) return [];
+
+  let parsed;
+  try {
+    parsed = value.startsWith('[') || value.startsWith('{') ? JSON.parse(value) : { src: value };
+  } catch (error) {
+    throw new Error(`Variable SITE_SCRIPTS is not valid JSON: ${error.message}`);
+  }
+
+  return (Array.isArray(parsed) ? parsed : [parsed]).map((entry, index) => {
+    const at = `SITE_SCRIPTS[${index}]`;
+    const script = typeof entry === 'string' ? { src: entry } : entry;
+    if (!script || typeof script !== 'object') throw new Error(`${at} is not a URL or an object`);
+    if (!script.src && !script.code) throw new Error(`${at} has neither "src" nor "code"`);
+
+    if (script.src) {
+      // Resolved against a base, so a path to a script committed under site/ is
+      // as acceptable as a vendor's absolute URL, while a javascript: or data:
+      // src still shows itself for what it is — in a page built from a
+      // repository variable that is a mistake far more often than a plan.
+      let url;
+      try {
+        url = new URL(script.src, 'https://example.invalid/');
+      } catch {
+        throw new Error(`${at} has an unusable src "${script.src}"`);
+      }
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+        throw new Error(`${at} has a ${url.protocol} src, expected http, https or a path`);
+      }
+    }
+
+    // The closing tag ends the element wherever it appears, including inside a
+    // string, so an inline script carrying one would cut the page in half.
+    if (script.code && /<\/script/i.test(script.code)) {
+      throw new Error(`${at} has "</script" in its code, which would end the tag early`);
+    }
+
+    for (const name of Object.keys(script)) {
+      if (RESERVED.has(name)) continue;
+      if (!ATTRIBUTE.test(name)) throw new Error(`${at} has an unusable attribute name "${name}"`);
+    }
+    return script;
+  });
+}
+
 // A language the site has no dictionary for would leave the page in English
 // with no explanation, so it is refused while the site is being built.
 function language(value) {
@@ -225,6 +283,9 @@ export function loadConfig(varsJson, secretsJson) {
     link: vars.SITE_LINK || '',
     logo: vars.SITE_LOGO || '',
     theme: vars.SITE_THEME === 'light' ? 'light' : vars.SITE_THEME === 'dark' ? 'dark' : 'auto',
+    // Not read from secrets: whatever goes here ends up in the page's source,
+    // where a reader can see it, so a secret would only be one by accident.
+    scripts: scripts(vars.SITE_SCRIPTS),
   };
 
   // The maintenance label marks planned work, so an automatic incident must

@@ -45,6 +45,7 @@ writeFileSync(
     lang: i18n.locale,
     dir: i18n.dir,
     t: i18n.t,
+    scripts: site.scripts,
   }),
 );
 
