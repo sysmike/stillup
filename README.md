@@ -481,6 +481,11 @@ runs the same command on every push that touches `scripts/` or `test/`.
   day tooltip alike; only a failed check counts against them.
 - Checks run from GitHub's runners, so they only see outages that are visible
   from the public internet.
+- The page names its modules with `modulepreload` in the head. Without that a
+  browser finds each import only after parsing the one before it, and the
+  request for the status data queues behind the whole chain. The data itself is
+  not preloaded: it is fetched with `no-cache`, which a preload does not match,
+  so the hint would fetch it twice rather than once.
 - Times are shown in the reader's own time zone, with the full timestamp and
   the zone's name in the tooltip of an incident's date. The day a bar stands for
   is a UTC day, and stays labelled as one wherever it is read from. How dates

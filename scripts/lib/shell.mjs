@@ -38,6 +38,16 @@ export function renderScripts(scripts = []) {
 export function stamp(html, { title, lang, dir, t, scripts = [] }) {
   let out = html;
 
+  // A translated site loads its own dictionary on top of English, and that
+  // request is only discovered once app.js has run. Named here it goes out with
+  // the rest, which is the difference between the page waiting for it and not.
+  if (lang && lang !== 'en') {
+    out = out.replace(
+      /(\n\s*)<link rel="modulepreload" href="lang\/en\.mjs" \/>/,
+      (whole, gap) => `${whole}${gap}<link rel="modulepreload" href="lang/${escape(lang)}.mjs" />`,
+    );
+  }
+
   out = out.replace(/<html\b([^>]*)>/i, (whole, attrs) => {
     const withLang = attrs.includes('lang=')
       ? attrs.replace(/\blang="[^"]*"/, `lang="${escape(lang)}"`)

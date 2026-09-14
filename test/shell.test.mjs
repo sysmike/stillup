@@ -83,8 +83,9 @@ test('an analytics snippet arrives as the vendor writes it', () => {
     scripts: [{ src: 'https://cloud.umami.is/script.js', defer: true, 'data-website-id': 'abc-123' }],
   });
   assert.match(out, /<script src="https:\/\/cloud\.umami\.is\/script\.js" defer data-website-id="abc-123"><\/script>/);
-  // In the head, after the page's own tags, and still inside it.
-  assert.match(out, /<link rel="stylesheet" href="style\.css" \/>\n\s*<script[^>]*><\/script>\n\s*<\/head>/);
+  // Last in the head, after everything the page ships with, and still inside it.
+  assert.match(out, /<script src="https:\/\/cloud[^>]*><\/script>\n\s*<\/head>/);
+  assert.ok(out.indexOf('style.css') < out.indexOf('cloud.umami.is'));
 });
 
 test('an inline script keeps its code', () => {
@@ -105,4 +106,23 @@ test('an attribute value cannot close the tag it sits in', () => {
 test('more than one script keeps its order', () => {
   const out = build({ scripts: [{ src: 'first.js' }, { src: 'second.js' }] });
   assert.ok(out.indexOf('first.js') < out.indexOf('second.js'));
+});
+
+test('the shell names the modules the page will import', () => {
+  // Without these the browser finds each import only after parsing the one
+  // before it, and the status request queues behind all of them.
+  assert.match(shell, /<link rel="modulepreload" href="lang\/i18n\.mjs" \/>/);
+  assert.match(shell, /<link rel="modulepreload" href="lang\/en\.mjs" \/>/);
+});
+
+test('a translated site names its own dictionary too', () => {
+  const de = build({ lang: 'de', dir: 'ltr', t: german.t });
+  assert.match(de, /<link rel="modulepreload" href="lang\/de\.mjs" \/>/);
+  // After English, which it is laid over, and only once.
+  assert.ok(de.indexOf('lang/en.mjs') < de.indexOf('lang/de.mjs'));
+  assert.equal(de.match(/modulepreload/g).length, 3);
+});
+
+test('an English site names no second dictionary', () => {
+  assert.equal(build().match(/modulepreload/g).length, 2);
 });
