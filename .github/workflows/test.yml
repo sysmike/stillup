@@ -5,21 +5,17 @@ on:
     paths:
       - 'scripts/**'
       - 'test/**'
-      # The dictionaries are held to each other by the same suite, and app.js is
-      # scanned for keys that no dictionary has.
-      - 'site/lang/**'
-      - 'site/app.js'
-      - 'site/index.html'
+      # The suite reads the dictionaries, the page and the stylesheet: it checks
+      # them against each other, so a change to any of them has to run it.
+      - 'site/**'
       - '.github/workflows/test.yml'
   pull_request:
     paths:
       - 'scripts/**'
       - 'test/**'
-      # The dictionaries are held to each other by the same suite, and app.js is
-      # scanned for keys that no dictionary has.
-      - 'site/lang/**'
-      - 'site/app.js'
-      - 'site/index.html'
+      # The suite reads the dictionaries, the page and the stylesheet: it checks
+      # them against each other, so a change to any of them has to run it.
+      - 'site/**'
       - '.github/workflows/test.yml'
 
 jobs:

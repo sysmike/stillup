@@ -876,8 +876,9 @@ try {
   const response = await fetch('api/summary.json', { cache: 'no-cache' });
   data = await response.json();
   // Both were started together, so waiting on the dictionary here costs nothing
-  // the fetch has not already spent.
-  i18n = await dictionary;
+  // the fetch has not already spent. A dictionary that fails to arrive leaves
+  // the page in English, which is a smaller loss than the page itself.
+  i18n = await dictionary.catch(() => english);
   applyStatic();
   if (!stored && data.site.theme !== 'auto') root.dataset.theme = data.site.theme;
   render();

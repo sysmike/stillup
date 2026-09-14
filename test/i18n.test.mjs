@@ -134,3 +134,19 @@ test('the stylesheet mirrors rather than assuming a side', () => {
     'a physical side does not flip for a right-to-left language; use the logical property',
   );
 });
+
+// The reverse of the check above: a translation that drops a placeholder leaves
+// the page missing a name, a count or a date, with nothing to say so.
+for (const lang of LANGUAGES.filter((tag) => tag !== 'en')) {
+  test(`${lang} keeps the placeholders a plain string cannot do without`, async () => {
+    const { default: translation } = await import(`../site/lang/${lang}.mjs`);
+    for (const [key, value] of Object.entries(en)) {
+      // A plural form may leave out the count it was chosen by: "No incidents
+      // in the last day" needs no number in it. A plain string may not.
+      if (typeof value !== 'string' || typeof translation[key] !== 'string') continue;
+      for (const name of names(value)) {
+        assert.ok(names(translation[key]).has(name), `${lang} ${key} drops {${name}}`);
+      }
+    }
+  });
+}

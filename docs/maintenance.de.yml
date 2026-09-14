@@ -22,8 +22,8 @@ body:
       value: |
         Dieses Issue erscheint auf der Statusseite, solange es offen ist, und
         bleibt bis 30 Tage nach seiner Erstellung gelistet. Schließe es, wenn
-        die Arbeiten erledigt sind. Die Seite übernimmt das beim nächsten
-        Neuaufbau, innerhalb von 30 Minuten.
+        die Arbeiten erledigt sind. Öffnen und Schließen baut die Seite
+        innerhalb von ein bis zwei Minuten neu auf.
 
         Halte den Titel kurz und nenne darin das Zeitfenster, zum Beispiel
         `Wartung: Datenbank-Upgrade, 14. März 02:00 UTC`.

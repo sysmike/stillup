@@ -8,7 +8,7 @@ body:
       value: |
         This issue is shown on the status page while it is open, and stays
         listed until 30 days after it was created. Close it when the work is
-        done. The page picks it up on the next rebuild, within 30 minutes.
+        done. Opening or closing it rebuilds the page within a minute or two.
 
         Keep the title short and put the window in it, for example
         `Maintenance: database upgrade, 14 Mar 02:00 UTC`.

@@ -107,6 +107,11 @@ const live = process.env.GITHUB_REPOSITORY
   ? `https://raw.githubusercontent.com/${process.env.GITHUB_REPOSITORY}/${process.env.GITHUB_REF_NAME || 'main'}/history/live.json`
   : null;
 
+// What the page reads of the configuration. SITE_SCRIPTS is a build
+// instruction rather than status, and the tags it asked for are in the document
+// already, so it is not part of the snapshot.
+const { scripts: _scripts, ...published } = site;
+
 writeFileSync(
   join(OUT, 'api', 'summary.json'),
   JSON.stringify(
@@ -115,7 +120,7 @@ writeFileSync(
       live,
       issuesUrl,
       monitorsHeading: incidentSettings.monitorsHeading,
-      site,
+      site: published,
       groups,
       overall,
       days: DAYS,

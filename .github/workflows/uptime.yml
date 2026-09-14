@@ -52,8 +52,8 @@ jobs:
           done
           exit 1
 
-  # Pages also rebuilds on its own 30 minute schedule; this keeps outages from
-  # waiting for that tick.
+  # Pages rebuilds on its own once a day; this keeps an outage from waiting
+  # for that tick.
   deploy:
     needs: check
     if: needs.check.outputs.changed == 'true'
