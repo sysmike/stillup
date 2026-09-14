@@ -1,5 +1,6 @@
-// German. Keys missing here fall back to English, so a partial translation is
-// a usable one.
+// German. A key with nothing here falls back to English, which keeps an
+// oversight from breaking the page rather than making one acceptable: the test
+// suite requires this file to have every key en.mjs has.
 
 export default {
   'common.loading': 'Wird geladen…',

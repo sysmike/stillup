@@ -1,6 +1,7 @@
-// Every string the page can show, and the only dictionary that is complete: a
-// translation is laid over this one, so a key nobody has reached yet still
-// says something.
+// Every string the page can show. A translation is laid over this one, so a key
+// it is missing still says something rather than nothing — a safety net, not a
+// licence to ship half of one: the test suite holds every language to the keys
+// listed here.
 //
 // A value that counts something is an object of plural categories. English
 // needs `one` and `other`; a translation may need more, or fewer, and says so

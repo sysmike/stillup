@@ -228,8 +228,11 @@ Times are shown in the reader's own time zone whatever the language is, and the
 wording of dates and durations follows the language rather than the reader's
 browser, so a label and the time beside it never disagree.
 
-To add one, copy `site/lang/en.mjs` to the language's tag, translate the values,
-and add the tag to `LANGUAGES` in `site/lang/i18n.mjs`:
+Adding one is three steps: copy `site/lang/en.mjs` to the language's tag,
+translate the values, and add the tag to `LANGUAGES` in `site/lang/i18n.mjs`.
+The list has to be written down because a browser cannot read a directory, and
+`SITE_LANG` is refused while the site is built if it names a language that is
+not on it.
 
 ```js
 // site/lang/fr.mjs
@@ -245,23 +248,25 @@ logical properties throughout, so a right-to-left language mirrors the layout
 rather than needing its own rules. No such language ships yet, so expect to find
 some polishing to do if you add the first one.
 
-A key you leave out falls back to English, so a half-finished translation is
-still usable. A value that counts something is an object of plural forms rather
-than a string, and the forms a language needs are its own — English has `one`
-and `other`, Polish also needs `few` and `many`:
+A value that counts something is an object of plural forms rather than a
+string, and the forms a language needs are its own — English has `one` and
+`other`, Polish also needs `few` and `many`:
 
 ```js
 'strip.checks': { one: '{count} check', other: '{count} checks' },
 ```
 
-`node --test` checks that every language has the keys English has, that no
-translation introduces a placeholder the page never fills in, and that every key
-the page asks for exists.
+A key with nothing translating it falls back to English, so a language cannot
+break the page by being incomplete. That is a safety net rather than a way of
+working: `node --test` requires every language to have the keys English has, so
+a translation is finished before it ships. The suite also checks that no
+translation introduces a placeholder the page never fills in, that none drops
+one the page depends on, and that every key the page asks for exists.
 
 What stays in the language it was written in is anything a person wrote: the
-body of an issue filed by hand, and your monitor and group names. Issues the workflow opens for an outage are translated, but only as they
-are written — an issue opened before you changed `SITE_LANG` keeps the words it
-was opened with.
+body of an issue filed by hand, and your monitor and group names. Issues the
+workflow opens for an outage are translated, but only as they are written — an
+issue opened before you changed `SITE_LANG` keeps the words it was opened with.
 
 One thing a language file cannot reach is the maintenance issue template, since
 GitHub renders it from the repository rather than from the site. A German
