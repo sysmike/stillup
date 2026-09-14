@@ -44,7 +44,24 @@ export function create(locale, dict) {
     return template.replace(PLACEHOLDER, (whole, name) => (name in params ? String(params[name]) : whole));
   }
 
-  return { locale, t, formatter };
+  const amount = (value, unit, unitDisplay) =>
+    formatter(Intl.NumberFormat, 'number', { style: 'unit', unit, unitDisplay }).format(value);
+
+  // How long something lasted, which is a measurement rather than a point in
+  // time, so it goes through the unit formatter rather than the relative one. A
+  // single unit has room to be spelled out; a pair is kept narrow so it stays
+  // on one line beside whatever it belongs to.
+  function duration(from, to) {
+    const minutes = Math.max(1, Math.round((new Date(to) - new Date(from)) / 60000));
+    if (minutes < 60) return amount(minutes, 'minute', 'long');
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+      return `${amount(hours, 'hour', 'narrow')} ${amount(minutes % 60, 'minute', 'narrow')}`;
+    }
+    return `${amount(Math.floor(hours / 24), 'day', 'narrow')} ${amount(hours % 24, 'hour', 'narrow')}`;
+  }
+
+  return { locale, t, formatter, duration };
 }
 
 export const english = create('en', en);

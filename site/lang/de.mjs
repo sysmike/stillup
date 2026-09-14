@@ -85,6 +85,24 @@ export default {
   'error.title': 'Statusdaten nicht verfügbar',
   'empty.monitors': 'Keine Monitore konfiguriert. Lege eine Repository-Variable namens {name} an.',
 
+  'field.url': 'URL',
+  'field.error': 'Fehler',
+  'field.code': 'Antwortcode',
+  'field.issue': 'Issue',
+  'field.firstFailure': 'Erster Fehlschlag',
+  'field.unknown': 'unbekannt',
+  'field.none': 'keiner',
+
+  'issue.title': '{name} ist ausgefallen',
+  'issue.intro': '**{name}** antwortet nicht mehr wie erwartet.',
+  'issue.autoClose': 'Dieses Issue wird automatisch geschlossen, sobald der Monitor wieder antwortet.',
+  'issue.recovered': 'Wieder erreichbar nach {duration} — {code} in {ms}ms.',
+
+  'notify.down': '{name} ist ausgefallen',
+  'notify.degraded': '{name} ist beeinträchtigt',
+  'notify.up': '{name} ist wieder erreichbar',
+  'notify.upAfter': '{name} ist wieder erreichbar nach {duration}',
+
   'a11y.toggleTheme': 'Design umschalten',
   'a11y.close': 'Schließen',
   'meta.description': 'Dienststatus und Verfügbarkeitsverlauf',

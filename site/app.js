@@ -52,7 +52,6 @@ const svg = (tag, attrs = {}) => {
 // status page is read from wherever the reader happens to be, and one
 // converting UTC in their head is one reading it wrong.
 const relativeFormat = (options) => i18n.formatter(Intl.RelativeTimeFormat, 'relative', options);
-const numberFormat = (options) => i18n.formatter(Intl.NumberFormat, 'number', options);
 const dateFormat = (options) => i18n.formatter(Intl.DateTimeFormat, 'date', options);
 
 // Each entry is what divides the unit before it, paired with the unit that
@@ -85,19 +84,9 @@ function relative(iso) {
   return relativeFormat({ numeric: 'auto' }).format(-Math.round(value), unit);
 }
 
-const amount = (value, unit, unitDisplay = 'narrow') =>
-  numberFormat({ style: 'unit', unit, unitDisplay }).format(value);
-
-// How long something lasted, which is a measurement rather than a point in
-// time. A single unit has room to be spelled out; a pair is kept narrow so it
-// stays on one line beside the entry it belongs to.
-function elapsed(from, to) {
-  const minutes = Math.max(1, Math.round((new Date(to) - new Date(from)) / 60000));
-  if (minutes < 60) return amount(minutes, 'minute', 'long');
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${amount(hours, 'hour')} ${amount(minutes % 60, 'minute')}`;
-  return `${amount(Math.floor(hours / 24), 'day')} ${amount(hours % 24, 'hour')}`;
-}
+// The workflow writes the same durations into its issues, so the formatting
+// lives with the dictionary rather than in a copy on each side.
+const elapsed = (from, to) => i18n.duration(from, to);
 
 // Date and time are formatted apart: asking for both at once gives some locales
 // a connecting word in the middle. The year only earns its place once the entry

@@ -6,6 +6,7 @@
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { load } from '../site/lang/i18n.mjs';
 import { loadConfig } from './lib/config.mjs';
 import { api, ensureLabel, repo } from './lib/github.mjs';
 import {
@@ -35,19 +36,13 @@ function readJson(file, fallback) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : fallback;
 }
 
-function duration(from, to) {
-  const minutes = Math.max(1, Math.round((new Date(to) - new Date(from)) / 60000));
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours < 24) return `${hours}h ${rest}m`;
-  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
-}
-
 const { incidents: settings, monitors, notifications, site } = loadConfig(
   process.env.CONFIG_VARS,
   process.env.CONFIG_SECRETS,
 );
+// What this workflow writes is read on the page beside what the page writes
+// itself, so both come from the same dictionary.
+const { t, duration } = await load(site.lang);
 const results = readJson(RESULTS_FILE, []);
 const state = readJson(STATE_FILE, {});
 let changed = false;
@@ -74,18 +69,19 @@ for (const result of results) {
     const created = await api(`/repos/${repo}/issues`, {
       method: 'POST',
       body: {
-        title: `${result.name} is down`,
+        title: t('issue.title', { name: result.name }),
         labels: settings.labels,
+        // The labels are translated, the markdown around them is not.
         body: [
           marker(result.slug),
-          `**${result.name}** stopped responding as expected.`,
+          t('issue.intro', { name: result.name }),
           '',
-          result.url ? `- URL: ${result.url}` : null,
-          `- Error: ${result.error || 'unknown'}`,
-          `- Response code: ${result.code || 'none'}`,
-          `- First failure: ${previous.status === 'down' ? previous.since : result.timestamp}`,
+          result.url ? `- ${t('field.url')}: ${result.url}` : null,
+          `- ${t('field.error')}: ${result.error || t('field.unknown')}`,
+          `- ${t('field.code')}: ${result.code || t('field.none')}`,
+          `- ${t('field.firstFailure')}: ${previous.status === 'down' ? previous.since : result.timestamp}`,
           '',
-          'This issue closes automatically once the monitor recovers.',
+          t('issue.autoClose'),
         ]
           .filter((line) => line !== null)
           .join('\n'),
@@ -94,19 +90,23 @@ for (const result of results) {
     console.log(`opened #${created.number} for ${result.slug}`);
     // The same threshold that is worth an issue is worth a notification: a
     // single failed check never reaches either.
-    await notify(notifications, {
-      slug: result.slug,
-      name: result.name,
-      status: result.status,
-      previousStatus: previous.status,
-      url: result.url,
-      error: result.error,
-      code: result.code,
-      issueNumber: created.number,
-      issueUrl: created.html_url,
-      site: site.title,
-      at: result.timestamp,
-    });
+    await notify(
+      notifications,
+      {
+        slug: result.slug,
+        name: result.name,
+        status: result.status,
+        previousStatus: previous.status,
+        url: result.url,
+        error: result.error,
+        code: result.code,
+        issueNumber: created.number,
+        issueUrl: created.html_url,
+        site: site.title,
+        at: result.timestamp,
+      },
+      { t },
+    );
     state[result.slug] = {
       status: 'down',
       since: previous.status === 'down' ? previous.since : result.timestamp,
@@ -120,26 +120,36 @@ for (const result of results) {
     const since = previous.status === 'down' ? previous.since : issue.created_at;
     await api(`/repos/${repo}/issues/${issue.number}/comments`, {
       method: 'POST',
-      body: { body: `Recovered after ${duration(since, result.timestamp)} — ${result.code} in ${result.ms}ms.` },
+      body: {
+        body: t('issue.recovered', {
+          duration: duration(since, result.timestamp),
+          code: result.code,
+          ms: result.ms,
+        }),
+      },
     });
     await api(`/repos/${repo}/issues/${issue.number}`, {
       method: 'PATCH',
       body: { state: 'closed', state_reason: 'completed' },
     });
     console.log(`closed #${issue.number} for ${result.slug}`);
-    await notify(notifications, {
-      slug: result.slug,
-      name: result.name,
-      status: 'up',
-      previousStatus: previous.status,
-      url: result.url,
-      code: result.code,
-      downFor: duration(since, result.timestamp),
-      issueNumber: issue.number,
-      issueUrl: issue.html_url,
-      site: site.title,
-      at: result.timestamp,
-    });
+    await notify(
+      notifications,
+      {
+        slug: result.slug,
+        name: result.name,
+        status: 'up',
+        previousStatus: previous.status,
+        url: result.url,
+        code: result.code,
+        downFor: duration(since, result.timestamp),
+        issueNumber: issue.number,
+        issueUrl: issue.html_url,
+        site: site.title,
+        at: result.timestamp,
+      },
+      { t },
+    );
   }
 
   state[result.slug] = {

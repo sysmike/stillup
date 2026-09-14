@@ -93,6 +93,26 @@ export default {
   // translation is free to put it wherever the sentence needs it.
   'empty.monitors': 'No monitors configured. Add a repository variable named {name} to get started.',
 
+  // Written by the workflow rather than by the page: the labels on an outage's
+  // facts, shared between the issue it opens and the notifications it sends.
+  'field.url': 'URL',
+  'field.error': 'Error',
+  'field.code': 'Response code',
+  'field.issue': 'Issue',
+  'field.firstFailure': 'First failure',
+  'field.unknown': 'unknown',
+  'field.none': 'none',
+
+  'issue.title': '{name} is down',
+  'issue.intro': '**{name}** stopped responding as expected.',
+  'issue.autoClose': 'This issue closes automatically once the monitor recovers.',
+  'issue.recovered': 'Recovered after {duration} — {code} in {ms}ms.',
+
+  'notify.down': '{name} is down',
+  'notify.degraded': '{name} is degraded',
+  'notify.up': '{name} is back up',
+  'notify.upAfter': '{name} is back up after {duration}',
+
   'a11y.toggleTheme': 'Toggle theme',
   'a11y.close': 'Close',
   'meta.description': 'Service status and uptime history',

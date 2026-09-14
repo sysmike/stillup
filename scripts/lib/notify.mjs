@@ -1,9 +1,13 @@
 // Sends an outage or a recovery to the places a repository has configured.
 //
 // A target is a NOTIFY_<NAME> variable, or secret for anything carrying a
-// token. Its kind follows from the URL, so a Slack or Discord webhook needs no
-// further configuration; a self-hosted Mattermost says so explicitly.
+// token, and says which kind it is.
+//
+// Everything a receiver reads comes from the dictionary the page uses, so a
+// site set to a language sounds like itself in chat as well. `t` defaults to
+// English, which is what SITE_LANG defaults to.
 
+import { english } from '../../site/lang/i18n.mjs';
 import { sendMail } from './smtp.mjs';
 
 const COLORS = { down: '#f04438', degraded: '#f79009', up: '#12b76a' };
@@ -18,43 +22,54 @@ export const SEND_TIMEOUT = 10000;
 export const TARGET_TYPES = ['slack', 'mattermost', 'discord', 'teams', 'teams-connector', 'email', 'custom'];
 
 // What every builder writes from. `event.status` is where the monitor is now,
-// so a recovery is 'up' and an outage is 'down' or 'degraded'.
-export function headline(event) {
+// so a recovery is 'up' and an outage is 'down' or 'degraded'. The mark is not
+// language, so it is put in front rather than kept in the dictionary.
+export function headline(event, t = english.t) {
   const mark = MARKS[event.status] || '';
-  if (event.status === 'up') {
-    return `${mark} ${event.name} is back up${event.downFor ? ` after ${event.downFor}` : ''}`;
-  }
-  return `${mark} ${event.name} is ${event.status === 'degraded' ? 'degraded' : 'down'}`;
+  const key =
+    event.status === 'up'
+      ? event.downFor
+        ? 'notify.upAfter'
+        : 'notify.up'
+      : event.status === 'degraded'
+        ? 'notify.degraded'
+        : 'notify.down';
+  return `${mark} ${t(key, { name: event.name, duration: event.downFor })}`;
 }
 
-function lines(event) {
+// Label and value are kept apart rather than joined and split again: a card
+// wants the two separately, and a translated label is not reliably one word
+// followed by a colon.
+function facts(event, t) {
   return [
-    event.error ? `Error: ${event.error}` : null,
-    event.code ? `Response code: ${event.code}` : null,
-    event.url ? `URL: ${event.url}` : null,
-    event.issueUrl ? `Issue: ${event.issueUrl}` : null,
+    event.error ? { label: t('field.error'), value: event.error } : null,
+    event.code ? { label: t('field.code'), value: String(event.code) } : null,
+    event.url ? { label: t('field.url'), value: event.url } : null,
+    event.issueUrl ? { label: t('field.issue'), value: event.issueUrl } : null,
   ].filter(Boolean);
 }
 
-const slackPayload = (event) => ({
-  text: headline(event),
+const asLines = (list) => list.map(({ label, value }) => `${label}: ${value}`).join('\n');
+
+const slackPayload = (event, t) => ({
+  text: headline(event, t),
   attachments: [
     {
       color: COLORS[event.status] || COLORS.down,
-      fallback: headline(event),
-      text: lines(event).join('\n'),
+      fallback: headline(event, t),
+      text: asLines(facts(event, t)),
       footer: event.site,
       ts: Math.floor(new Date(event.at).getTime() / 1000),
     },
   ],
 });
 
-const discordPayload = (event) => ({
+const discordPayload = (event, t) => ({
   embeds: [
     {
-      title: headline(event),
+      title: headline(event, t),
       url: event.issueUrl || event.url || undefined,
-      description: lines(event).join('\n') || undefined,
+      description: asLines(facts(event, t)) || undefined,
       color: Number.parseInt((COLORS[event.status] || COLORS.down).slice(1), 16),
       timestamp: event.at,
       footer: event.site ? { text: event.site } : undefined,
@@ -64,20 +79,17 @@ const discordPayload = (event) => ({
 
 // A Workflows webhook accepts an adaptive card; a retired Office 365 connector
 // only ever understood a message card.
-function teamsPayload(event, legacy) {
-  const facts = lines(event).map((line) => {
-    const [name, ...rest] = line.split(': ');
-    return { name, value: rest.join(': ') };
-  });
+function teamsPayload(event, t, legacy) {
+  const list = facts(event, t);
 
   if (legacy) {
     return {
       '@type': 'MessageCard',
       '@context': 'https://schema.org/extensions',
       themeColor: (COLORS[event.status] || COLORS.down).slice(1),
-      summary: headline(event),
-      title: headline(event),
-      sections: [{ facts }],
+      summary: headline(event, t),
+      title: headline(event, t),
+      sections: [{ facts: list.map(({ label, value }) => ({ name: label, value })) }],
     };
   }
 
@@ -91,8 +103,8 @@ function teamsPayload(event, legacy) {
           type: 'AdaptiveCard',
           version: '1.4',
           body: [
-            { type: 'TextBlock', size: 'Medium', weight: 'Bolder', wrap: true, text: headline(event) },
-            { type: 'FactSet', facts: facts.map(({ name, value }) => ({ title: `${name}:`, value })) },
+            { type: 'TextBlock', size: 'Medium', weight: 'Bolder', wrap: true, text: headline(event, t) },
+            { type: 'FactSet', facts: list.map(({ label, value }) => ({ title: `${label}:`, value })) },
           ],
         },
       },
@@ -101,7 +113,7 @@ function teamsPayload(event, legacy) {
 }
 
 // Nothing is assumed about a custom endpoint, so it receives the event itself.
-const customPayload = (event) => ({
+const customPayload = (event, t) => ({
   event: event.status === 'up' ? 'recovered' : 'down',
   status: event.status,
   previousStatus: event.previousStatus,
@@ -112,38 +124,38 @@ const customPayload = (event) => ({
   issue: event.issueUrl ? { number: event.issueNumber, url: event.issueUrl } : null,
   site: event.site || null,
   at: event.at,
-  text: headline(event),
+  text: headline(event, t),
 });
 
 // Slack and Mattermost speak the same webhook dialect, so one builder serves
 // both.
-export function buildPayload(target, event) {
+export function buildPayload(target, event, t = english.t) {
   switch (target.type) {
     case 'slack':
     case 'mattermost':
-      return slackPayload(event);
+      return slackPayload(event, t);
     case 'discord':
-      return discordPayload(event);
+      return discordPayload(event, t);
     case 'teams':
-      return teamsPayload(event, false);
+      return teamsPayload(event, t, false);
     case 'teams-connector':
-      return teamsPayload(event, true);
+      return teamsPayload(event, t, true);
     default:
-      return customPayload(event);
+      return customPayload(event, t);
   }
 }
 
 // The body a mailbox gets: the same facts, without the markup a chat client
 // would have rendered.
-export function buildMail(target, event) {
-  const body = [headline(event), '', ...lines(event)];
+export function buildMail(target, event, t = english.t) {
+  const body = [headline(event, t), '', asLines(facts(event, t))];
   if (event.site) body.push('', event.site);
-  return { subject: headline(event), text: `${body.join('\n')}\n` };
+  return { subject: headline(event, t), text: `${body.join('\n')}\n` };
 }
 
 // A notification is never worth failing a run over: a target that is down, slow
 // or misconfigured is reported and the next one is tried.
-export async function send(target, event, fetchImpl = fetch) {
+export async function send(target, event, fetchImpl = fetch, t = english.t) {
   if (target.type === 'email') {
     // GitHub's runners are Azure VMs, where outbound port 25 is blocked. The
     // attempt is still made — a self-hosted runner is free of that — but the
@@ -152,7 +164,7 @@ export async function send(target, event, fetchImpl = fetch) {
       console.log(`${target.name}: port 25 is blocked on GitHub's runners, use 587 or 465`);
     }
 
-    const { subject, text } = buildMail(target, event);
+    const { subject, text } = buildMail(target, event, t);
     await sendMail({
       url: target.url,
       from: target.from,
@@ -165,7 +177,7 @@ export async function send(target, event, fetchImpl = fetch) {
     return true;
   }
 
-  const body = JSON.stringify(buildPayload(target, event));
+  const body = JSON.stringify(buildPayload(target, event, t));
   const response = await fetchImpl(target.url, {
     method: target.method || 'POST',
     headers: { 'content-type': 'application/json', ...target.headers },
@@ -178,12 +190,12 @@ export async function send(target, event, fetchImpl = fetch) {
   return true;
 }
 
-export async function notify(targets, event, { fetchImpl = fetch, log = console.log } = {}) {
+export async function notify(targets, event, { fetchImpl = fetch, log = console.log, t = english.t } = {}) {
   let sent = 0;
   for (const target of targets) {
     if (!target.events.includes(event.status === 'up' ? 'up' : event.status)) continue;
     try {
-      await send(target, event, fetchImpl);
+      await send(target, event, fetchImpl, t);
       sent += 1;
       log(`notified ${target.name} (${target.type})`);
     } catch (error) {

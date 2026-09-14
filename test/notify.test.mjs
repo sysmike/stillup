@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TARGET_TYPES, buildPayload, headline, notify } from '../scripts/lib/notify.mjs';
+import { TARGET_TYPES, buildMail, buildPayload, headline, notify } from '../scripts/lib/notify.mjs';
+import { load } from '../site/lang/i18n.mjs';
 
 const target = (type, url = 'https://example.com/hook') => ({
   name: 'Test',
@@ -61,6 +62,44 @@ test('Discord gets an embed that links to the issue', () => {
   assert.equal(payload.embeds[0].url, 'https://github.com/acme/status/issues/42');
   assert.equal(payload.embeds[0].color, 0xf04438);
   assert.equal(payload.embeds[0].timestamp, '2026-03-01T12:00:00Z');
+});
+
+test('a fact keeps its label apart from its value', () => {
+  // The label used to be recovered by splitting on ": ", which a translated
+  // label is under no obligation to survive.
+  const card = buildPayload(target('teams'), { ...outage, error: 'read ETIMEDOUT: after 10s' });
+  assert.deepEqual(card.attachments[0].content.body[1].facts[0], {
+    title: 'Error:',
+    value: 'read ETIMEDOUT: after 10s',
+  });
+});
+
+test('a site with a language sends in it', async () => {
+  const { t } = await load('de');
+  assert.equal(headline(outage, t), '🔴 Database ist ausgefallen');
+  assert.equal(headline(recovery, t), '🟢 Database ist wieder erreichbar nach 1h 35m');
+  assert.equal(headline({ ...outage, status: 'degraded' }, t), '🟠 Database ist beeinträchtigt');
+
+  const slack = buildPayload(target('slack'), outage, t);
+  assert.equal(slack.text, '🔴 Database ist ausgefallen');
+  assert.match(slack.attachments[0].text, /^Fehler: connect ECONNREFUSED$/m);
+
+  const card = buildPayload(target('teams'), outage, t).attachments[0].content;
+  assert.deepEqual(card.body[1].facts[0], { title: 'Fehler:', value: 'connect ECONNREFUSED' });
+
+  const mail = buildMail(target('email'), outage, t);
+  assert.equal(mail.subject, '🔴 Database ist ausgefallen');
+  assert.match(mail.text, /^Fehler: connect ECONNREFUSED$/m);
+  assert.match(mail.text, /^URL: https:\/\/db\.example\.com$/m);
+});
+
+test('the event a custom endpoint receives stays in the field names it knows', async () => {
+  const { t } = await load('de');
+  const payload = buildPayload(target('custom'), outage, t);
+  // Translating the keys would break every receiver; only the prose moves.
+  assert.equal(payload.event, 'down');
+  assert.equal(payload.status, 'down');
+  assert.equal(payload.text, '🔴 Database ist ausgefallen');
 });
 
 test('Teams gets an adaptive card', () => {

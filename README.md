@@ -49,7 +49,7 @@ the certificate.
 | `SITE_LINK` | none | Link in the footer |
 | `SITE_LOGO` | none | Logo URL shown next to the title |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
-| `SITE_LANG` | `en` | Language the page is shown in: `en` or `de`, see [Languages](#languages) |
+| `SITE_LANG` | `en` | Language of the page, its issues and its notifications: `en` or `de`, see [Languages](#languages) |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
@@ -169,8 +169,11 @@ which is what happens when no group is configured at all.
 
 ## Languages
 
-The page's own text lives in `site/lang/`, one file per language, and
-`SITE_LANG` chooses between them. English and German ship with it.
+Every string this repository writes lives in `site/lang/`, one file per
+language, and `SITE_LANG` chooses between them. English and German ship with it.
+The page reads those files in the browser and the workflows read them on the
+runner, so a site set to a language sounds like itself everywhere: on the page,
+in the issues it opens, and in the notifications it sends.
 
 Times are shown in the reader's own time zone whatever the language is, and the
 wording of dates and durations follows the language rather than the reader's
@@ -201,9 +204,11 @@ and `other`, Polish also needs `few` and `many`:
 translation introduces a placeholder the page never fills in, and that every key
 the page asks for exists.
 
-Two things stay in the language they were written in: the text of an issue,
-which is whatever whoever filed it wrote, and the title and body of an issue the
-workflow opens for an outage, which are English. Notifications are English too.
+What stays in the language it was written in is anything a person wrote: the
+body of an issue filed by hand, the maintenance form, and your monitor and group
+names. Issues the workflow opens for an outage are translated, but only as they
+are written — an issue opened before you changed `SITE_LANG` keeps the words it
+was opened with.
 
 If you translate `.github/ISSUE_TEMPLATE/maintenance.yml`, set
 `MONITORS_HEADING` to match its monitors field — see [Incidents](#how-it-works).
@@ -387,9 +392,9 @@ node --test
 ```
 
 Covers configuration parsing, the redaction that keeps a private monitor's URL
-out of issues, the daily rollup, the notification payloads, the language
-dictionaries, and the SMTP client against a server that speaks the protocol
-back. No dependencies, and the Test workflow
+out of issues, the daily rollup, the notification payloads in each language, the
+language dictionaries themselves, and the SMTP client against a server that
+speaks the protocol back. No dependencies, and the Test workflow
 runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes
