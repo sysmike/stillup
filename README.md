@@ -78,6 +78,7 @@ checked by opening a connection: the monitor is up when the handshake
 completes, and the measured time is the handshake itself. With `keyword` set,
 the check also waits for the first chunk the server sends and matches it
 against that string, which covers banner protocols such as SMTP, SSH or IMAP.
+It also checks for TLS certificate expiry date and warns accordingly.
 `method`, `headers`, `body`, `expectedStatus` and `followRedirects` do not
 apply to a TCP monitor, and its address is not offered as a link — set `link`
 if the monitor should point somewhere a browser can follow.
@@ -283,27 +284,6 @@ single failed check notifies nobody. Restrict a destination to some of that with
 `"events"`, any of `down`, `degraded`, `up` and `cert`. A failing destination is
 logged and skipped — it never fails the run or blocks the others.
 
-## Certificates
-
-An expiring TLS certificate is the one outage that announces itself in advance,
-and the handshake that would find it is one the check is making anyway. Every
-`https://` monitor is watched by default, and a `tcp` monitor can be too if it
-says `"cert": true` — implicit TLS only, so an SMTP submission port that starts
-in the clear and upgrades with STARTTLS is not covered.
-
-The certificate is read rather than trusted, so a self-signed or otherwise
-unacceptable chain still reports an expiry instead of a permanent failure. A
-probe that does not answer is left for the next run: the monitor itself already
-says whether the host is up.
-
-It is looked at twice a day rather than every five minutes, since nothing about
-an expiry moves in between, and the result is kept in `history/certs.json`. The
-warning steps down as the date approaches — `CERT_WARN_DAYS` out, then seven
-days, then three, then one — so it is neither said once and forgotten nor
-repeated every run. Renewing the certificate starts that over. The monitor's
-details show the date whatever it is, in the page's usual colour until it comes
-within `CERT_WARN_DAYS`.
-
 ### Custom webhooks
 
 A custom endpoint receives the event itself:
@@ -470,30 +450,11 @@ runs the same command on every push that touches `scripts/` or `test/`.
   machine you control: [docs/external-scheduler.md](docs/external-scheduler.md).
 - Uptime percentages count degraded checks as up, in the figures and in the
   day tooltip alike; only a failed check counts against them.
-- A status page that has stopped checking still knows what it saw last, and
-  saying so confidently is the one way it can mislead outright. Past
-  `STALE_AFTER` minutes without a check the banner says the status may be out of
-  date, and the tab icon greys out with it. The rows keep showing what was last
-  seen, because that is what they are. The clock behind this is the newest check
-  in the data, not the time the page was built: a scheduled rebuild moves the
-  build time forward on its own and would go on doing so long after the checks
-  behind it had stopped.
-- The page's `<title>`, description and the tags a chat client reads to build a
-  card are written into `index.html` by the build. Nothing that matters there
-  runs the page's script, so a link shared in chat would otherwise advertise
-  every deployment as "Status" in English whatever it was configured as. Set
-  `SITE_URL` for the card to know its own address, and `SITE_LOGO` for it to
-  have a picture.
 - The page names its modules with `modulepreload` in the head. Without that a
   browser finds each import only after parsing the one before it, and the
   request for the status data queues behind the whole chain. The data itself is
   not preloaded: it is fetched with `no-cache`, which a preload does not match,
   so the hint would fetch it twice rather than once.
-- Times are shown in the reader's own time zone, with the full timestamp and
-  the zone's name in the tooltip of an incident's date. The day a bar stands for
-  is a UTC day, and stays labelled as one wherever it is read from. How dates
-  and durations are worded follows `SITE_LANG` rather than the reader's browser,
-  so a label and the time beside it never disagree.
 
 ## License
 
