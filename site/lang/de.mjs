@@ -17,6 +17,8 @@ export default {
   'banner.partial': 'Teilausfall',
   'banner.down': 'Schwerer Ausfall',
   'banner.none': 'Warten auf die erste Prüfung',
+  'banner.stale': 'Status möglicherweise veraltet',
+  'banner.staleMeta': 'Die letzte Prüfung war {when}',
   'banner.loading': 'Status wird geladen…',
   // The verb follows the number, which is why English keeps both forms even
   // though they read the same.
@@ -59,6 +61,10 @@ export default {
   },
   'incidents.all': 'Alle Vorfälle auf GitHub',
 
+  'feed.ongoing': 'Andauernd',
+  'feed.resolvedAfter': 'Behoben nach {duration}',
+  'feed.completedAfter': 'Abgeschlossen nach {duration}',
+  'incidents.feed': 'Atom-Feed',
   'incident.downFor': 'Ausgefallen seit {duration}',
   'incident.maintenanceOpened': 'Wartung, eröffnet {when}',
   'incident.resolved': 'Behoben {when} nach {duration}',

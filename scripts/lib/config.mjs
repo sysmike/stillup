@@ -154,6 +154,22 @@ function scripts(raw) {
   });
 }
 
+function siteUrl(value) {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`Variable SITE_URL is not a URL: "${raw}"`);
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`Variable SITE_URL is ${url.protocol}, expected http or https`);
+  }
+  // Stored without its trailing slash, so joining a path to it is unambiguous.
+  return url.href.replace(/\/+$/, '');
+}
+
 // A language the site has no dictionary for would leave the page in English
 // with no explanation, so it is refused while the site is being built.
 function language(value) {
@@ -283,6 +299,10 @@ export function loadConfig(varsJson, secretsJson) {
     link: vars.SITE_LINK || '',
     logo: vars.SITE_LOGO || '',
     theme: vars.SITE_THEME === 'light' ? 'light' : vars.SITE_THEME === 'dark' ? 'dark' : 'auto',
+    // Where the page will be served from, which nothing in the repository knows
+    // once a custom domain is involved. Only the feed needs it, and the feed is
+    // still valid without it.
+    url: siteUrl(vars.SITE_URL),
     // Not read from secrets: whatever goes here ends up in the page's source,
     // where a reader can see it, so a secret would only be one by accident.
     scripts: scripts(vars.SITE_SCRIPTS),
@@ -295,6 +315,13 @@ export function loadConfig(varsJson, secretsJson) {
     .map((label) => label.trim())
     .filter((label) => label && label !== MAINTENANCE_LABEL);
 
+  // Minutes without a check before the page stops vouching for what it shows.
+  // Six missed runs at the default five minute schedule, which leaves room for
+  // the drift a cron on a shared runner has anyway. Zero turns the warning off,
+  // for a repository that deliberately checks rarely.
+  const staleAfter = Math.max(0, Number(vars.STALE_AFTER ?? 30));
+  if (!Number.isFinite(staleAfter)) throw new Error('Variable STALE_AFTER is not a number');
+
   const incidents = {
     threshold: Number(vars.INCIDENT_THRESHOLD || 2),
     labels: labels.length ? labels : DEFAULT_INCIDENT_LABELS,
@@ -303,5 +330,5 @@ export function loadConfig(varsJson, secretsJson) {
     monitorsHeading: (vars.MONITORS_HEADING || '').trim() || DEFAULT_MONITORS_HEADING,
   };
 
-  return { site, groups, monitors, incidents, notifications };
+  return { site, groups, monitors, incidents, notifications, staleAfter };
 }

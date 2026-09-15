@@ -23,6 +23,8 @@ export default {
   'banner.partial': 'Partial outage',
   'banner.down': 'Major outage',
   'banner.none': 'Waiting for the first check',
+  'banner.stale': 'Status may be out of date',
+  'banner.staleMeta': 'The last check was {when}',
   'banner.loading': 'Loading status…',
   // `monitors` is the list of names; `count` is how many, for a language whose
   // verb changes with it.
@@ -65,6 +67,10 @@ export default {
   },
   'incidents.all': 'All incidents on GitHub',
 
+  'feed.ongoing': 'Ongoing',
+  'feed.resolvedAfter': 'Resolved after {duration}',
+  'feed.completedAfter': 'Completed after {duration}',
+  'incidents.feed': 'Atom feed',
   'incident.downFor': 'Down for {duration}',
   'incident.maintenanceOpened': 'Maintenance, opened {when}',
   'incident.resolved': 'Resolved {when} after {duration}',

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { load } from '../site/lang/i18n.mjs';
 import { loadConfig } from './lib/config.mjs';
+import { atom } from './lib/feed.mjs';
 import { RAW_DAYS, readDaily, readRaw } from './lib/history.mjs';
 import { stamp } from './lib/shell.mjs';
 import { dayKeys, dayViews, uptimeWindows } from './lib/summary.mjs';
@@ -19,7 +20,7 @@ function readJson(file, fallback) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
 }
 
-const { site, groups, monitors, incidents: incidentSettings } = loadConfig(
+const { site, groups, monitors, incidents: incidentSettings, staleAfter } = loadConfig(
   process.env.CONFIG_VARS,
   process.env.CONFIG_SECRETS,
 );
@@ -126,12 +127,34 @@ writeFileSync(
       groups,
       overall,
       days: DAYS,
+      staleAfter,
       monitors: summaryMonitors,
       incidents: incidents.slice(0, 20),
     },
     null,
     2,
   ),
+);
+
+// Somewhere to follow the page from that is not the page. The default Pages
+// address stands in when SITE_URL is unset, which is right until a custom
+// domain is put in front of it.
+const owner = (process.env.GITHUB_REPOSITORY || '').split('/')[0];
+const repoName = (process.env.GITHUB_REPOSITORY || '').split('/')[1] || '';
+const pagesUrl = owner
+  ? `https://${owner}.github.io${repoName.toLowerCase() === `${owner.toLowerCase()}.github.io` ? '' : `/${repoName}`}`
+  : '';
+
+writeFileSync(
+  join(OUT, 'feed.xml'),
+  atom({
+    title: site.title,
+    url: site.url || pagesUrl,
+    repoUrl: process.env.GITHUB_REPOSITORY ? `https://github.com/${process.env.GITHUB_REPOSITORY}` : '',
+    incidents,
+    t: i18n.t,
+    duration: i18n.duration,
+  }),
 );
 
 console.log(`built ${summaryMonitors.length} monitor(s) into _site/`);

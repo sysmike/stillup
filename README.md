@@ -52,6 +52,8 @@ the certificate.
 | `SITE_LANG` | `en` | Language of the page, its issues and its notifications: `en` or `de`, see [Languages](#languages) |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
+| `SITE_URL` | the Pages address | Where the page is served from; only the feed needs it, and only to link to itself |
+| `STALE_AFTER` | `30` | Minutes without a check before the page says so instead of vouching for what it shows; `0` turns it off |
 | `SITE_SCRIPTS` | none | Tags added to the page's head, for analytics — see [Custom scripts](#custom-scripts) |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
 
@@ -385,6 +387,14 @@ rename the label — translating the form, for instance — set `MONITORS_HEADIN
 to the new text. Get the two out of step and the linking stops working without
 saying so.
 
+`feed.xml` is an Atom feed of the same incidents, linked from the page and
+announced in its head, so a reader can follow the page without polling it and
+without a GitHub account. There is one entry per incident rather than per
+update: it appears when the incident is opened, and its `updated` moves when the
+incident is resolved, which is what tells a reader's client to show it again.
+Set `SITE_URL` if the page has a custom domain, so the feed can link to itself;
+without it the feed is still valid and still links to every incident.
+
 The `maintenance` label is reserved for that template. It is dropped from
 `INCIDENT_LABELS` if it appears there, and an issue the workflow opened for an
 outage is shown as an outage even if it carries the label, so a mislabelled
@@ -413,7 +423,8 @@ node --test
 Covers configuration parsing, the redaction that keeps a private monitor's URL
 out of issues, the daily rollup, the notification payloads in each language, the
 language dictionaries themselves, what the build writes into the page's head,
-and the SMTP client against a server that speaks the protocol back. No dependencies, and the Test workflow
+the Atom feed, and the SMTP client against a server that speaks the protocol
+back. No dependencies, and the Test workflow
 runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes
@@ -424,6 +435,14 @@ runs the same command on every push that touches `scripts/` or `test/`.
   machine you control: [docs/external-scheduler.md](docs/external-scheduler.md).
 - Uptime percentages count degraded checks as up, in the figures and in the
   day tooltip alike; only a failed check counts against them.
+- A status page that has stopped checking still knows what it saw last, and
+  saying so confidently is the one way it can mislead outright. Past
+  `STALE_AFTER` minutes without a check the banner says the status may be out of
+  date, and the tab icon greys out with it. The rows keep showing what was last
+  seen, because that is what they are. The clock behind this is the newest check
+  in the data, not the time the page was built: a scheduled rebuild moves the
+  build time forward on its own and would go on doing so long after the checks
+  behind it had stopped.
 - The page names its modules with `modulepreload` in the head. Without that a
   browser finds each import only after parsing the one before it, and the
   request for the status data queues behind the whole chain. The data itself is

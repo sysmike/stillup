@@ -43,7 +43,7 @@ test('the shell text is translated in place, markup untouched', () => {
   const de = build({ title: 'Acme Status', lang: 'de', dir: 'ltr', t: german.t });
   assert.match(de, /<h2 class="section-title" data-i18n="incidents.title">Vorfälle<\/h2>/);
   assert.match(de, /data-i18n="footer.source">Quelle</);
-  assert.match(de, /data-i18n="incidents.all">Alle Vorfälle auf GitHub</);
+  assert.match(de, /data-i18n="incidents.all"[^>]*>Alle Vorfälle auf GitHub</);
 });
 
 test('an accessible name is translated where the element carries one', () => {

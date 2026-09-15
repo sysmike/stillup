@@ -631,7 +631,6 @@ function renderIncidents(incidents) {
   const section = document.getElementById('incidents');
   const list = document.getElementById('incident-list');
   const empty = document.getElementById('incidents-empty');
-  const more = document.getElementById('incidents-more');
 
   const recent = incidents.filter(
     (incident) => incident.state === 'open' || Date.now() - new Date(incident.createdAt) < INCIDENT_DAYS * 86400000,
@@ -657,8 +656,11 @@ function renderIncidents(incidents) {
   // so it is said rather than left to an absent section.
   empty.textContent = t('incidents.empty', { count: INCIDENT_DAYS });
   empty.hidden = recent.length > 0;
-  more.hidden = !data.issuesUrl;
-  if (data.issuesUrl) document.getElementById('incidents-link').href = data.issuesUrl;
+  // The feed is always there, so the row is too; only the GitHub link depends
+  // on knowing which repository this is.
+  const issues = document.getElementById('incidents-link');
+  issues.hidden = !data.issuesUrl;
+  if (data.issuesUrl) issues.href = data.issuesUrl;
   section.hidden = false;
 }
 
@@ -743,6 +745,22 @@ function renderMonitors() {
   fillPendingStrips();
 }
 
+// When the checks last ran, which is not when the page was built: a scheduled
+// rebuild moves generatedAt forward on its own, and would go on doing so long
+// after the checks behind it had stopped. ISO timestamps sort as text.
+function lastChecked(monitors) {
+  const times = monitors.map((monitor) => monitor.lastCheck).filter(Boolean);
+  return times.length ? times.reduce((newest, at) => (at > newest ? at : newest)) : null;
+}
+
+// A status page that has not checked anything for hours still knows what it saw
+// last, and saying so confidently is the one way it can mislead outright. Past
+// this point it says it does not know instead.
+function isStale(at) {
+  if (!data.staleAfter || !at) return false;
+  return Date.now() - new Date(at) > data.staleAfter * 60000;
+}
+
 // The build works this out too, for the snapshot it writes; the two have to
 // agree or the banner would change on the first refresh. See scripts/build.mjs.
 function computeOverall(monitors) {
@@ -825,6 +843,34 @@ function applyStatic() {
     .replaceChildren(before, el('code', null, 'MONITOR_<NAME>'), after ?? '');
 }
 
+// The banner and the footer age on their own: nothing new has to arrive for
+// "checked two minutes ago" to become "checked an hour ago", and for the answer
+// above it to stop being one worth giving. Drawn apart from the rows so the
+// clock can redraw them without rebuilding anything underneath the pointer.
+function renderBanner() {
+  const checked = lastChecked(data.monitors);
+  const stale = isStale(checked);
+  const state = stale ? 'stale' : data.overall;
+
+  const banner = document.getElementById('banner');
+  banner.className = `banner banner-${state}`;
+  setFavicon(stale ? 'none' : data.overall);
+  document.getElementById('banner-title').textContent = t(`banner.${state}`);
+
+  const down = data.monitors.filter((monitor) => monitor.status === 'down');
+  document.getElementById('banner-meta').textContent = stale
+    ? t('banner.staleMeta', { when: relative(checked) })
+    : data.site.description ||
+      (down.length
+        ? t('banner.notResponding', {
+            count: down.length,
+            monitors: down.map((monitor) => monitor.name).join(', '),
+          })
+        : t('count.monitors', { count: data.monitors.length }));
+
+  document.getElementById('updated').textContent = t('footer.checked', { when: relative(checked) });
+}
+
 function render() {
   document.title = data.site.title;
   document.getElementById('brand-title').textContent = data.site.title;
@@ -839,23 +885,9 @@ function render() {
     link.hidden = false;
   }
 
-  const banner = document.getElementById('banner');
-  banner.className = `banner banner-${data.overall}`;
-  setFavicon(data.overall);
-  document.getElementById('banner-title').textContent = t(`banner.${data.overall}`);
-  const down = data.monitors.filter((monitor) => monitor.status === 'down');
-  document.getElementById('banner-meta').textContent =
-    data.site.description ||
-    (down.length
-      ? t('banner.notResponding', {
-          count: down.length,
-          monitors: down.map((monitor) => monitor.name).join(', '),
-        })
-      : t('count.monitors', { count: data.monitors.length }));
+  renderBanner();
 
   document.getElementById('empty').hidden = data.monitors.length > 0;
-  document.getElementById('updated').textContent = t('footer.checked', { when: relative(data.generatedAt) });
-
   renderIncidents(data.incidents);
   renderMonitors();
 }
@@ -890,7 +922,7 @@ try {
   render();
   syncDialog();
   setInterval(() => {
-    document.getElementById('updated').textContent = t('footer.checked', { when: relative(data.generatedAt) });
+    renderBanner();
   }, 30000);
   refresh();
   setInterval(refresh, 60000);

@@ -188,6 +188,11 @@ main.shell {
 .banner-down {
   --status: var(--down);
 }
+/* Not a colour for the services: the page is saying it does not know, which is
+   the same thing it says before the first check has run. */
+.banner-stale {
+  --status: var(--none);
+}
 
 .section-title {
   margin: 0;
@@ -285,6 +290,8 @@ main.shell {
 }
 
 .incidents-more {
+  display: flex;
+  gap: 16px;
   margin: 14px 0 0;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -529,7 +536,8 @@ main.shell {
 
   /* Nothing to report, nothing to pulse. */
   .dot.is-idle::after,
-  .banner-none .banner-dot::after {
+  .banner-none .banner-dot::after,
+  .banner-stale .banner-dot::after {
     display: none;
   }
 }
