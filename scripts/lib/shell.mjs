@@ -35,7 +35,33 @@ export function renderScripts(scripts = []) {
     .join('\n    ');
 }
 
-export function stamp(html, { title, lang, dir, t, scripts = [] }) {
+// What a chat client or a search engine reads to build a card. Left out, they
+// fall back to guessing from the page, which for a page rendered by script
+// means guessing from almost nothing.
+function cardTags({ title, description, url, image, lang }) {
+  return [
+    ['og:type', 'website'],
+    ['og:title', title],
+    ['og:description', description],
+    ['og:locale', lang],
+    ['og:url', url ? `${url}/` : ''],
+    ['og:image', image],
+    ['twitter:card', 'summary'],
+    ['twitter:title', title],
+    ['twitter:description', description],
+  ]
+    .filter(([, content]) => content)
+    // og:* is a property, twitter:* is a name. Clients read whichever they
+    // expect and ignore the other, but only if it is spelled their way.
+    .map(([key, content]) =>
+      key.startsWith('og:')
+        ? `    <meta property="${key}" content="${escape(content)}" />`
+        : `    <meta name="${key}" content="${escape(content)}" />`,
+    )
+    .join('\n');
+}
+
+export function stamp(html, { title, lang, dir, t, description, url, image, scripts = [] }) {
   let out = html;
 
   // A translated site loads its own dictionary on top of English, and that
@@ -59,9 +85,13 @@ export function stamp(html, { title, lang, dir, t, scripts = [] }) {
   });
 
   out = out.replace(/<title>[^<]*<\/title>/i, `<title>${escape(title)}</title>`);
+  const summary = description || t('meta.description');
+  out = out.replace(/(<meta\s+name="description"\s+content=")[^"]*"/i, `$1${escape(summary)}"`);
+
+  // After the description, so everything a card is built from sits together.
   out = out.replace(
-    /(<meta\s+name="description"\s+content=")[^"]*"/i,
-    `$1${escape(t('meta.description'))}"`,
+    /(<meta\s+name="description"[^>]*\/>)/i,
+    `$1\n${cardTags({ title, description: summary, url, image, lang })}`,
   );
 
   // The element's text is replaced, not its markup: the English in the file

@@ -64,11 +64,20 @@ test('every marked element is reached, so none is left in the wrong language', (
   }
 });
 
-test('the English shell is left as it was written', () => {
-  // The file already says these things; stamping them again must not disturb
-  // the markup around them.
+test('stamping adds to the shell without disturbing what is already there', () => {
+  // The file already says most of this; stamping it again must leave every
+  // line it did not put there exactly as it was.
   const out = build({ title: 'Status' });
-  assert.equal(out.replace(/ dir="ltr"/, ''), shell.replace(/<title>[^<]*<\/title>/, '<title>Status</title>'));
+  const added = /^\s*<meta (property="og:|name="twitter:)/;
+  for (const line of shell.split('\n')) {
+    if (line.includes('<html ')) continue; // dir is added to it
+    assert.ok(out.includes(line), `stamping lost: ${line.trim()}`);
+  }
+  const extra = out.split('\n').filter((line) => !shell.includes(line));
+  assert.ok(
+    extra.every((line) => added.test(line) || line.includes('<html ')),
+    `stamping added something unexpected: ${extra.filter((l) => !added.test(l) && !l.includes('<html ')).join(' | ')}`,
+  );
 });
 
 test('a head with nothing added to it is left alone', () => {
@@ -125,4 +134,39 @@ test('a translated site names its own dictionary too', () => {
 
 test('an English site names no second dictionary', () => {
   assert.equal(build().match(/modulepreload/g).length, 2);
+});
+
+test('a shared link carries what a card is built from', () => {
+  const out = build({ description: 'Uptime for Acme', url: 'https://status.example.com', image: 'https://status.example.com/logo.png' });
+  assert.match(out, /<meta property="og:title" content="Acme Status" \/>/);
+  assert.match(out, /<meta property="og:description" content="Uptime for Acme" \/>/);
+  assert.match(out, /<meta property="og:url" content="https:\/\/status\.example\.com\/" \/>/);
+  assert.match(out, /<meta property="og:image" content="https:\/\/status\.example\.com\/logo\.png" \/>/);
+  assert.match(out, /<meta property="og:locale" content="en" \/>/);
+  // og uses property, twitter uses name, and a client reads only its own.
+  assert.match(out, /<meta name="twitter:card" content="summary" \/>/);
+  assert.match(out, /<meta name="twitter:title" content="Acme Status" \/>/);
+});
+
+test('the configured description wins, and the dictionary stands in', () => {
+  const described = build({ description: 'Uptime for Acme' });
+  assert.match(described, /<meta name="description" content="Uptime for Acme" \/>/);
+  assert.match(described, /<meta property="og:description" content="Uptime for Acme" \/>/);
+
+  const bare = build();
+  assert.match(bare, /<meta name="description" content="Service status and uptime history" \/>/);
+  assert.match(bare, /<meta property="og:description" content="Service status and uptime history" \/>/);
+});
+
+test('a tag with nothing to say is left out rather than left empty', () => {
+  const out = build();
+  assert.doesNotMatch(out, /content=""/);
+  assert.doesNotMatch(out, /og:image/, 'a site with no logo has no picture to offer');
+  assert.doesNotMatch(out, /og:url/);
+});
+
+test('a card cannot be used to smuggle markup into the head', () => {
+  const out = build({ description: '"><script>alert(1)</script>' });
+  assert.match(out, /og:description" content="&quot;&gt;&lt;script&gt;/);
+  assert.doesNotMatch(out, /<script>alert/);
 });

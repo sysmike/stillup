@@ -33,6 +33,15 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'api', 'monitor'), { recursive: true });
 cpSync(join(ROOT, 'site'), OUT, { recursive: true });
 
+// The default Pages address stands in when SITE_URL is unset, which is right
+// until a custom domain is put in front of it.
+const owner = (process.env.GITHUB_REPOSITORY || '').split('/')[0];
+const repoName = (process.env.GITHUB_REPOSITORY || '').split('/')[1] || '';
+const pagesUrl = owner
+  ? `https://${owner}.github.io${repoName.toLowerCase() === `${owner.toLowerCase()}.github.io` ? '' : `/${repoName}`}`
+  : '';
+const siteBase = site.url || pagesUrl;
+
 // The language has to be on the document before app.js can ask for anything,
 // which also lets the right dictionary load alongside the first fetch rather
 // than after it. The rest is for whatever never runs a script — a chat client
@@ -47,6 +56,12 @@ writeFileSync(
     lang: i18n.locale,
     dir: i18n.dir,
     t: i18n.t,
+    description: site.description,
+    url: site.url || pagesUrl,
+    // A logo is the only picture this page has. Resolved against the site's own
+    // address, because a card is built somewhere else entirely and a relative
+    // path means nothing there.
+    image: site.logo && siteBase ? new URL(site.logo, `${siteBase}/`).href : '',
     scripts: site.scripts,
   }),
 );
@@ -141,20 +156,12 @@ writeFileSync(
   ),
 );
 
-// Somewhere to follow the page from that is not the page. The default Pages
-// address stands in when SITE_URL is unset, which is right until a custom
-// domain is put in front of it.
-const owner = (process.env.GITHUB_REPOSITORY || '').split('/')[0];
-const repoName = (process.env.GITHUB_REPOSITORY || '').split('/')[1] || '';
-const pagesUrl = owner
-  ? `https://${owner}.github.io${repoName.toLowerCase() === `${owner.toLowerCase()}.github.io` ? '' : `/${repoName}`}`
-  : '';
-
+// Somewhere to follow the page from that is not the page.
 writeFileSync(
   join(OUT, 'feed.xml'),
   atom({
     title: site.title,
-    url: site.url || pagesUrl,
+    url: siteBase,
     repoUrl: process.env.GITHUB_REPOSITORY ? `https://github.com/${process.env.GITHUB_REPOSITORY}` : '',
     incidents,
     t: i18n.t,

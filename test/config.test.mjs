@@ -135,16 +135,16 @@ test('site settings fall back and the theme is limited to the three values', () 
 });
 
 test('incident settings fall back', () => {
-  const heading = 'Affected monitors';
+  const headings = { monitorsHeading: 'Affected monitors', windowHeading: 'Window' };
   assert.deepEqual(loadConfig(vars({})).incidents, {
     threshold: 2,
     labels: ['status', 'incident'],
-    monitorsHeading: heading,
+    ...headings,
   });
   assert.deepEqual(loadConfig(vars({ INCIDENT_THRESHOLD: '4', INCIDENT_LABELS: 'status, outage ,' })).incidents, {
     threshold: 4,
     labels: ['status', 'outage'],
-    monitorsHeading: heading,
+    ...headings,
   });
 });
 
@@ -245,6 +245,11 @@ test('a destination hears about every event unless it says otherwise', () => {
   );
   assert.deepEqual(notifications[0].events, ['down', 'degraded', 'up', 'cert']);
   assert.deepEqual(notifications[1].events, ['down']);
+});
+
+test('the window heading is configurable too', () => {
+  assert.equal(loadConfig(vars({ WINDOW_HEADING: ' Zeitfenster ' })).incidents.windowHeading, 'Zeitfenster');
+  assert.equal(loadConfig(vars({ WINDOW_HEADING: '' })).incidents.windowHeading, 'Window');
 });
 
 test('the heading the maintenance form writes is configurable', () => {

@@ -12,11 +12,15 @@ body:
 
         Keep the title short and put the window in it, for example
         `Maintenance: database upgrade, 14 Mar 02:00 UTC`.
+  # The start is read off this field, so work announced for next week is listed
+  # as upcoming rather than as happening now. Write the date as 2026-03-14, with
+  # an optional 24 hour time; anything else is treated as no window at all.
+  # Renaming this label means setting WINDOW_HEADING to match.
   - type: input
     id: window
     attributes:
       label: Window
-      description: Start and end, in UTC.
+      description: Start and end, in UTC. Begin with the date, as 2026-03-14 02:00.
       placeholder: 2026-03-14 02:00 - 04:00 UTC
     validations:
       required: true

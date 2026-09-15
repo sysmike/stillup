@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   DEFAULT_MONITORS_HEADING,
+  DEFAULT_WINDOW_HEADING,
   affectedMonitors,
   isMaintenance,
   marker,
   markedMonitor,
   stripMarker,
+  windowStart,
 } from '../scripts/lib/issues.mjs';
 
 const issue = (labels, body = '') => ({ labels: labels.map((name) => ({ name })), body });
@@ -99,4 +101,47 @@ test('the German template works with the heading its instructions name', () => {
 
   const body = `### Zeitfenster\n\nHeute Nacht\n\n### ${label}\n\nPublic API`;
   assert.deepEqual(affectedMonitors(body, monitors, label), ['api']);
+});
+
+test('the window says when planned work starts', () => {
+  const body = (window) => `### Window\n\n${window}\n\n### Expected impact\n\nBriefly slower`;
+  assert.equal(windowStart(body('2026-03-14 02:00 - 04:00 UTC')), '2026-03-14T02:00:00.000Z');
+  assert.equal(windowStart(body('2026-03-14')), '2026-03-14T00:00:00.000Z');
+  assert.equal(windowStart(body('2026-03-14T02:00Z')), '2026-03-14T02:00:00.000Z');
+  assert.equal(windowStart(body('  2026-03-14 2:05 until whenever ')), '2026-03-14T02:05:00.000Z');
+});
+
+test('a window nobody can read leaves the entry where it was', () => {
+  const body = (window) => `### Window\n\n${window}`;
+  // Free text, so most of what can be written in it is not a date at all. The
+  // entry stays listed as it would have been before any of this existed.
+  assert.equal(windowStart(body('next Tuesday')), null);
+  assert.equal(windowStart(body('14 Mar 2026')), null);
+  assert.equal(windowStart(body('_No response_')), null);
+  assert.equal(windowStart('### Expected impact\n\nNo window given'), null);
+  assert.equal(windowStart(null), null);
+});
+
+test('a date that does not exist is not one', () => {
+  const body = (window) => `### Window\n\n${window}`;
+  // Date.UTC rolls these forward rather than refusing them.
+  assert.equal(windowStart(body('2026-13-01')), null);
+  assert.equal(windowStart(body('2026-02-30')), null);
+  assert.equal(windowStart(body('2026-02-28')), '2026-02-28T00:00:00.000Z');
+});
+
+test('a translated form is read once its heading is named', () => {
+  const body = '### Zeitfenster\n\n2026-03-14 02:00 UTC';
+  assert.equal(windowStart(body, 'Zeitfenster'), '2026-03-14T02:00:00.000Z');
+  assert.equal(windowStart(body), null, 'the default heading is not in this issue');
+});
+
+test('both templates name the window heading their instructions expect', () => {
+  assert.equal(labelOf('../.github/ISSUE_TEMPLATE/maintenance.yml', 'window'), DEFAULT_WINDOW_HEADING);
+
+  const file = '../docs/maintenance.de.yml';
+  const label = labelOf(file, 'window');
+  assert.equal(label, 'Zeitfenster');
+  const told = readFileSync(new URL(file, import.meta.url), 'utf8').match(/WINDOW_HEADING auf "([^"]+)"/)?.[1];
+  assert.equal(told, label, 'the file tells the reader to set a heading it does not use');
 });

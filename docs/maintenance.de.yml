@@ -4,10 +4,11 @@
 #
 #     cp docs/maintenance.de.yml .github/ISSUE_TEMPLATE/maintenance.yml
 #
-# und die Variable MONITORS_HEADING auf "Betroffene Monitore" setzen — daran
-# erkennt die Seite, welche Monitore ein Issue betrifft. GitHub macht aus der
-# Beschriftung des Feldes die Überschrift im Issue-Text; stimmen die beiden
-# nicht überein, bleibt die Verknüpfung kommentarlos aus.
+# und zwei Variablen setzen: MONITORS_HEADING auf "Betroffene Monitore" und
+# WINDOW_HEADING auf "Zeitfenster". GitHub macht aus der Beschriftung eines
+# Feldes die Überschrift im Issue-Text; daran erkennt die Seite, welche Monitore
+# ein Issue betrifft und wann die Arbeiten beginnen. Stimmen Beschriftung und
+# Variable nicht überein, bleibt das kommentarlos aus.
 #
 # Die Labels in `labels:` bleiben unübersetzt: `maintenance` ist reserviert und
 # der erste Eintrag muss zu INCIDENT_LABELS passen.
@@ -27,11 +28,14 @@ body:
 
         Halte den Titel kurz und nenne darin das Zeitfenster, zum Beispiel
         `Wartung: Datenbank-Upgrade, 14. März 02:00 UTC`.
+  # Der Beginn wird aus diesem Feld gelesen, damit angekündigte Arbeiten als
+  # geplant statt als laufend erscheinen. Das Datum als 2026-03-14 schreiben,
+  # die Uhrzeit ist optional.
   - type: input
     id: window
     attributes:
       label: Zeitfenster
-      description: Beginn und Ende, in UTC.
+      description: Beginn und Ende, in UTC. Mit dem Datum beginnen, etwa 2026-03-14 02:00.
       placeholder: 2026-03-14 02:00 - 04:00 UTC
     validations:
       required: true

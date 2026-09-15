@@ -33,6 +33,35 @@ export const DEFAULT_MONITORS_HEADING = 'Affected monitors';
 // would otherwise be read as syntax is escaped.
 const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// The maintenance form asks for a window, and it is worth reading: work
+// announced for next Tuesday should not sit under Active all week. Like the
+// monitors field, GitHub renders the heading from the field's label, so a
+// translated form renames it and WINDOW_HEADING follows.
+export const DEFAULT_WINDOW_HEADING = 'Window';
+
+// Written by hand into a free text field, so only what the form asks for is
+// understood: a date, optionally a time, read as UTC because that is what the
+// field says. Anything else reads as no window at all, which leaves the entry
+// where it was before this could be read.
+const WINDOW = /(\d{4})-(\d{2})-(\d{2})(?:[T ]+(\d{1,2}):(\d{2}))?/;
+
+export function windowStart(body, heading = DEFAULT_WINDOW_HEADING) {
+  const pattern = new RegExp(`###\\s*${escape(heading)}\\s*\\n+([^\\n#]+)`, 'i');
+  const section = (body || '').match(pattern)?.[1];
+  const found = (section || '').match(WINDOW);
+  if (!found) return null;
+
+  const [, year, month, day, hour = '0', minute = '0'] = found;
+  const at = new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)),
+  );
+  if (Number.isNaN(at.getTime())) return null;
+  // Date.UTC rolls a month of 13 into the next year rather than refusing it, so
+  // what went in is checked against what came out.
+  if (at.getUTCMonth() !== Number(month) - 1 || at.getUTCDate() !== Number(day)) return null;
+  return at.toISOString();
+}
+
 // Issues this workflow opens name their monitor in a marker. One filed through
 // the maintenance template names them in prose instead, so both are resolved to
 // slugs for the page to filter on.

@@ -17,6 +17,7 @@ import {
   marker,
   markedMonitor,
   stripMarker,
+  windowStart,
 } from './lib/issues.mjs';
 import { notify } from './lib/notify.mjs';
 import { dayKeys, liveMonitor } from './lib/summary.mjs';
@@ -203,22 +204,28 @@ for (const issue of recent) {
 const snapshot = JSON.stringify(
   recent
     .filter((issue) => !issue.pull_request)
-    .map((issue) => ({
-      number: issue.number,
-      title: issue.title,
-      url: issue.html_url,
-      state: issue.state,
-      createdAt: issue.created_at,
-      closedAt: issue.closed_at,
-      labels: issue.labels.map((label) => label.name),
-      monitor: markedMonitor(issue.body),
-      monitors: affectedMonitors(issue.body, monitors, settings.monitorsHeading),
-      // The page renders this itself so a reader never has to leave for GitHub.
-      body: stripMarker(issue.body).trim().slice(0, 2000),
-      maintenance: isMaintenance(issue),
-      commentCount: issue.comments,
-      comments: comments.get(issue.number) || [],
-    })),
+    .map((issue) => {
+      const maintenance = isMaintenance(issue);
+      return {
+        number: issue.number,
+        title: issue.title,
+        url: issue.html_url,
+        state: issue.state,
+        createdAt: issue.created_at,
+        closedAt: issue.closed_at,
+        labels: issue.labels.map((label) => label.name),
+        monitor: markedMonitor(issue.body),
+        monitors: affectedMonitors(issue.body, monitors, settings.monitorsHeading),
+        // Only planned work has a window worth reading; an outage started when
+        // it started.
+        startsAt: maintenance ? windowStart(issue.body, settings.windowHeading) : null,
+        // The page renders this itself so a reader never has to leave for GitHub.
+        body: stripMarker(issue.body).trim().slice(0, 2000),
+        maintenance,
+        commentCount: issue.comments,
+        comments: comments.get(issue.number) || [],
+      };
+    }),
   null,
   2,
 );

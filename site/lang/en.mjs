@@ -65,6 +65,8 @@ export default {
 
   'incidents.title': 'Incidents',
   'incidents.active': 'Active',
+  'incidents.upcoming': 'Upcoming',
+  'incident.startsIn': 'Starts {when}',
   'incidents.earlier': 'Earlier',
   'incidents.empty': {
     one: 'No incidents in the last day.',

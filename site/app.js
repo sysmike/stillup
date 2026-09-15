@@ -66,23 +66,32 @@ const SCALES = [
 
 // Wording and plural form come from the locale rather than from this file:
 // "2 minutes ago" has three forms in Polish, and none of them is built by
-// appending an s.
+// appending an s. Works in both directions, because planned work is announced
+// before it happens.
 function relative(iso) {
   if (!iso) return t('common.never');
   const seconds = Math.round((Date.now() - new Date(iso)) / 1000);
   // Zero seconds is the locale's own word for now, which beats a count that
   // would read "in 0 seconds".
-  if (seconds < 60) return relativeFormat({ numeric: 'auto' }).format(0, 'second');
+  if (Math.abs(seconds) < 60) return relativeFormat({ numeric: 'auto' }).format(0, 'second');
 
-  let value = seconds;
+  let value = Math.abs(seconds);
   let unit = 'second';
   for (const [size, next] of SCALES) {
     if (value < size) break;
     value /= size;
     unit = next;
   }
-  return relativeFormat({ numeric: 'auto' }).format(-Math.round(value), unit);
+  // Behind is negative to the formatter, ahead is positive.
+  const direction = seconds > 0 ? -1 : 1;
+  return relativeFormat({ numeric: 'auto' }).format(direction * Math.round(value), unit);
 }
+
+// Planned work whose window has not opened yet. Nothing changes state when it
+// does: the entry moves group on the next render, because this is asked afresh
+// each time.
+const isUpcoming = (incident) =>
+  incident.maintenance && incident.state === 'open' && incident.startsAt && new Date(incident.startsAt) > Date.now();
 
 // The workflow writes the same durations into its issues, so the formatting
 // lives with the dictionary rather than in a copy on each side.
@@ -300,9 +309,14 @@ function renderIncidentItem(incident, active = false) {
   mark.append(svg('path', { d: INCIDENT_ICONS[state], 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
   icon.append(mark);
 
+  // Work that has not started yet is dated by when it will, not by when
+  // somebody wrote it down.
+  const upcoming = isUpcoming(incident);
+  const at = upcoming ? incident.startsAt : incident.createdAt;
+
   const body = el('div', 'event-body');
-  const date = el('div', 'event-date', formatDateTime(incident.createdAt));
-  date.title = fullDateTime(incident.createdAt);
+  const date = el('div', 'event-date', formatDateTime(at));
+  date.title = fullDateTime(at);
   body.append(date);
 
   const title = el('button', 'incident-title', incident.title);
@@ -325,7 +339,9 @@ function renderIncidentItem(incident, active = false) {
     el(
       'span',
       'incident-state',
-      incident.state === 'open'
+      upcoming
+        ? t('incident.startsIn', { when: relative(incident.startsAt) })
+        : incident.state === 'open'
         ? incident.maintenance
           ? t('incident.maintenanceOpened', { when: relative(incident.createdAt) })
           : t('incident.downFor', { duration: elapsed(incident.createdAt, Date.now()) })
@@ -654,17 +670,33 @@ function renderIncidents(incidents) {
   // each group the newest comes first, rather than trusting the order the
   // snapshot happens to have.
   const newestFirst = (a, b) => b.createdAt.localeCompare(a.createdAt);
-  const active = recent.filter((incident) => incident.state === 'open').sort(newestFirst);
+  // Planned work that has not started is neither happening nor over, and
+  // belongs under neither heading. It is listed soonest first, since what is
+  // about to happen matters more than what is furthest off.
+  const upcoming = recent
+    .filter(isUpcoming)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const active = recent
+    .filter((incident) => incident.state === 'open' && !isUpcoming(incident))
+    .sort(newestFirst);
   const past = recent
     .filter((incident) => incident.state !== 'open')
     .sort(newestFirst)
     .slice(0, PAST_INCIDENTS);
 
+  // An outage in progress leads, then what is coming, then what is over.
+  const groups = [
+    ['incidents.active', active, true],
+    ['incidents.upcoming', upcoming, false],
+    ['incidents.earlier', past, false],
+  ].filter(([, entries]) => entries.length);
+
   list.replaceChildren();
-  if (active.length && past.length) list.append(el('li', 'event-group', t('incidents.active')));
-  for (const incident of active) list.append(renderIncidentItem(incident, true));
-  if (active.length && past.length) list.append(el('li', 'event-group', t('incidents.earlier')));
-  for (const incident of past) list.append(renderIncidentItem(incident));
+  for (const [heading, entries, boxed] of groups) {
+    // One group needs no heading: there is nothing for it to be told apart from.
+    if (groups.length > 1) list.append(el('li', 'event-group', t(heading)));
+    for (const incident of entries) list.append(renderIncidentItem(incident, boxed));
+  }
 
   // Nothing having happened is the good news a status page is there to give,
   // so it is said rather than left to an absent section.

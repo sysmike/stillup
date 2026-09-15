@@ -10,7 +10,7 @@
 // kept out of the published site and out of incident issues.
 
 import { LANGUAGES } from '../../site/lang/i18n.mjs';
-import { DEFAULT_MONITORS_HEADING, MAINTENANCE_LABEL } from './issues.mjs';
+import { DEFAULT_MONITORS_HEADING, DEFAULT_WINDOW_HEADING, MAINTENANCE_LABEL } from './issues.mjs';
 import { TARGET_TYPES } from './notify.mjs';
 
 const MONITOR_PREFIX = 'MONITOR_';
@@ -337,6 +337,9 @@ export function loadConfig(varsJson, secretsJson) {
     // Must match the label on the maintenance form's monitors field, which is
     // what GitHub turns into the heading this is looked for under.
     monitorsHeading: (vars.MONITORS_HEADING || '').trim() || DEFAULT_MONITORS_HEADING,
+    // Likewise the window field, which decides whether planned work is
+    // happening or still to come.
+    windowHeading: (vars.WINDOW_HEADING || '').trim() || DEFAULT_WINDOW_HEADING,
   };
 
   return { site, groups, monitors, incidents, notifications, staleAfter, certWarnDays };

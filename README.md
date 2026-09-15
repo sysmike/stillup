@@ -56,6 +56,7 @@ the certificate.
 | `CERT_WARN_DAYS` | `14` | Days before a TLS certificate expires that are worth hearing about; `0` turns the checks off |
 | `STALE_AFTER` | `30` | Minutes without a check before the page says so instead of vouching for what it shows; `0` turns it off |
 | `SITE_SCRIPTS` | none | Tags added to the page's head, for analytics — see [Custom scripts](#custom-scripts) |
+| `WINDOW_HEADING` | `Window` | The maintenance form's window field label, which is how the start of planned work is found |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
 
 ## Monitors
@@ -241,9 +242,10 @@ version is ready to copy over:
 cp docs/maintenance.de.yml .github/ISSUE_TEMPLATE/maintenance.yml
 ```
 
-Then set `MONITORS_HEADING` to `Betroffene Monitore`. Translating the template
-yourself works the same way: whatever you call the monitors field, that is what
-`MONITORS_HEADING` has to say — see [How it works](#how-it-works).
+Then set `MONITORS_HEADING` to `Betroffene Monitore` and `WINDOW_HEADING` to
+`Zeitfenster`. Translating the template yourself works the same way: whatever
+you call those two fields is what the variables have to say — see
+[How it works](#how-it-works).
 
 ## Notifications
 
@@ -397,6 +399,15 @@ never below something that has since been resolved; resolved entries follow, the
 last ten within 30 days, with a link to the rest on GitHub. A quiet month says
 so rather than hiding the section.
 
+Planned work whose window has not opened yet is listed under **Upcoming**
+instead, soonest first, dated by when it will start rather than by when somebody
+wrote it down. Nothing changes state when the window opens: the page works out
+which group an entry belongs to every time it draws, so the entry moves on its
+own. The start is read from the form's **Window** field, which wants the date
+first — `2026-03-14`, optionally with a 24 hour time, in UTC. Anything it cannot
+read counts as no window at all, and the entry is listed as happening now, which
+is what it would have been before any of this was read.
+
 Issues labelled with the incident label show up on the page, so you can also
 open one by hand for planned work: the **Planned maintenance** issue template
 applies the `status` and `maintenance` labels and the entry is rendered as
@@ -404,12 +415,12 @@ maintenance rather than as an outage. If `INCIDENT_LABELS` is customised, the
 first label in it has to be the one in
 `.github/ISSUE_TEMPLATE/maintenance.yml`.
 
-The template's **Affected monitors** field is what links an issue to the
-monitors it concerns: GitHub renders the field's label as a heading in the issue
-body, and both the workflow and the page look for that heading by name. If you
-rename the label — translating the form, for instance — set `MONITORS_HEADING`
-to the new text. Get the two out of step and the linking stops working without
-saying so.
+Two of the template's fields are read rather than only displayed. **Affected
+monitors** links an issue to the monitors it concerns, and **Window** says when
+the work starts. GitHub renders each field's label as a heading in the issue
+body, and that heading is what is looked for. If you rename a label —
+translating the form, for instance — set `MONITORS_HEADING` or `WINDOW_HEADING`
+to the new text. Get one out of step and that part quietly stops working.
 
 `feed.xml` is an Atom feed of the same incidents, linked from the page and
 announced in its head, so a reader can follow the page without polling it and
@@ -467,6 +478,12 @@ runs the same command on every push that touches `scripts/` or `test/`.
   in the data, not the time the page was built: a scheduled rebuild moves the
   build time forward on its own and would go on doing so long after the checks
   behind it had stopped.
+- The page's `<title>`, description and the tags a chat client reads to build a
+  card are written into `index.html` by the build. Nothing that matters there
+  runs the page's script, so a link shared in chat would otherwise advertise
+  every deployment as "Status" in English whatever it was configured as. Set
+  `SITE_URL` for the card to know its own address, and `SITE_LOGO` for it to
+  have a picture.
 - The page names its modules with `modulepreload` in the head. Without that a
   browser finds each import only after parsing the one before it, and the
   request for the status data queues behind the whole chain. The data itself is
