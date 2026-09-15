@@ -550,6 +550,20 @@ async function openDetail(slug) {
   );
   detailBody.append(figures);
 
+  // Counted here rather than at build time: a page built last night would
+  // otherwise be a day out by the time anybody read it.
+  if (monitor.certExpires) {
+    const days = Math.floor((new Date(monitor.certExpires) - Date.now()) / 86400000);
+    const note = el(
+      'p',
+      days <= (data.certWarnDays || 0) ? 'detail-meta is-warning' : 'detail-meta',
+      days < 0
+        ? t('detail.certExpired', { date: formatDate(monitor.certExpires) })
+        : t('detail.certExpires', { count: days, date: formatDate(monitor.certExpires) }),
+    );
+    detailBody.append(note);
+  }
+
   const history = el('div', 'detail-section');
   history.append(el('h3', 'section-title', t('detail.history', { days: data.days })));
   detailBody.append(history);

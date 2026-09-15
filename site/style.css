@@ -783,6 +783,11 @@ main.shell {
   color: var(--muted);
 }
 
+/* A fact that has turned into something to act on. */
+.detail-meta.is-warning {
+  color: var(--degraded);
+}
+
 .detail-figures {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

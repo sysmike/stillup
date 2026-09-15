@@ -1,10 +1,11 @@
 // Checks every configured monitor, appends the result to history and writes
 // scripts/.results.json for the incident step.
 
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { connect } from 'node:net';
 import { promisify } from 'node:util';
+import { due, endpoint, peerCertificate } from './lib/cert.mjs';
 import { loadConfig, redact, statusMatches } from './lib/config.mjs';
 import { appendResult } from './lib/history.mjs';
 
@@ -123,7 +124,8 @@ async function check(monitor) {
   return last;
 }
 
-const { monitors } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
+const { monitors, certWarnDays } = loadConfig(process.env.CONFIG_VARS, process.env.CONFIG_SECRETS);
+const CERTS_FILE = new URL('../history/certs.json', import.meta.url);
 if (monitors.length === 0) {
   console.log('No MONITOR_* variables configured.');
 }
@@ -173,3 +175,35 @@ for (const [index, result] of results.entries()) {
 }
 
 writeFileSync(new URL('.results.json', import.meta.url), JSON.stringify(results, null, 2));
+
+// Certificates are looked at on their own schedule: the handshake is cheap but
+// not free, and nothing about an expiry moves in five minutes. A probe that
+// fails is left for next time rather than reported — the monitor itself already
+// says whether the host is answering.
+if (certWarnDays > 0) {
+  const certs = existsSync(CERTS_FILE) ? JSON.parse(readFileSync(CERTS_FILE, 'utf8')) : {};
+  const now = new Date();
+  let looked = 0;
+
+  for (const monitor of monitors) {
+    const where = endpoint(monitor);
+    if (!where || !due(certs[monitor.slug], now)) continue;
+    try {
+      const { validTo, issuer } = await peerCertificate(where.host, where.port);
+      certs[monitor.slug] = { ...certs[monitor.slug], validTo, issuer, checkedAt: now.toISOString() };
+      looked += 1;
+      console.log(`cert ${monitor.name} — expires ${validTo.slice(0, 10)}`);
+    } catch (error) {
+      const message = monitor.private ? redact(error.message, monitor.url) : error.message;
+      console.log(`cert ${monitor.name} — not read: ${message}`);
+    }
+  }
+
+  // Monitors that have gone away should not keep a record forever.
+  const known = new Set(monitors.map((monitor) => monitor.slug));
+  for (const slug of Object.keys(certs)) if (!known.has(slug)) delete certs[slug];
+
+  if (looked || Object.keys(certs).length) {
+    writeFileSync(CERTS_FILE, `${JSON.stringify(certs, null, 2)}\n`);
+  }
+}

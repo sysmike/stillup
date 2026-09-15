@@ -7,6 +7,7 @@
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { load } from '../site/lang/i18n.mjs';
+import { warning } from './lib/cert.mjs';
 import { loadConfig } from './lib/config.mjs';
 import { api, ensureLabel, repo } from './lib/github.mjs';
 import {
@@ -24,6 +25,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const STATE_FILE = `${ROOT}history/state.json`;
 const INCIDENTS_FILE = `${ROOT}history/incidents.json`;
 const LIVE_FILE = `${ROOT}history/live.json`;
+const CERTS_FILE = `${ROOT}history/certs.json`;
 const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 
 // What the page shows of a conversation: the newest few comments, each cut to
@@ -36,7 +38,7 @@ function readJson(file, fallback) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : fallback;
 }
 
-const { incidents: settings, monitors, notifications, site } = loadConfig(
+const { incidents: settings, monitors, notifications, site, certWarnDays } = loadConfig(
   process.env.CONFIG_VARS,
   process.env.CONFIG_SECRETS,
 );
@@ -256,6 +258,38 @@ writeFileSync(
     2,
   )}\n`,
 );
+
+// An expiry is the one outage that can be announced before it happens. The
+// warning steps down — a fortnight out, then a week, then three days, then one
+// — so it is neither said once and forgotten nor repeated every five minutes.
+const certs = readJson(CERTS_FILE, {});
+let certsChanged = false;
+for (const monitor of monitors) {
+  const record = certs[monitor.slug];
+  const due = warning(record, certWarnDays);
+  if (!due) continue;
+
+  await notify(
+    notifications,
+    {
+      slug: monitor.slug,
+      name: monitor.name,
+      status: 'cert',
+      url: monitor.private ? monitor.link : monitor.url,
+      // The day, not the instant: a chat message has no use for milliseconds.
+      validTo: record.validTo.slice(0, 10),
+      daysLeft: due.days,
+      issuer: record.issuer || null,
+      site: site.title,
+      at: new Date().toISOString(),
+    },
+    { t },
+  );
+  certs[monitor.slug] = { ...record, notified: { validTo: record.validTo, step: due.step } };
+  certsChanged = true;
+  console.log(`certificate for ${monitor.slug} expires in ${due.days} day(s)`);
+}
+if (certsChanged) writeFileSync(CERTS_FILE, `${JSON.stringify(certs, null, 2)}\n`);
 
 if (process.env.GITHUB_OUTPUT) {
   appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);

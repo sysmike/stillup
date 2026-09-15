@@ -49,6 +49,11 @@ export default {
 
   'detail.since': 'seit {date}',
   'detail.history': '{days} Tage Verlauf',
+  'detail.certExpires': {
+    one: 'Zertifikat läuft in {count} Tag ab, am {date}',
+    other: 'Zertifikat läuft in {count} Tagen ab, am {date}',
+  },
+  'detail.certExpired': 'Zertifikat ist am {date} abgelaufen',
   'detail.responseTime': 'Antwortzeit',
   'detail.noIncidents': 'Keine Vorfälle für diesen Monitor.',
 
@@ -100,6 +105,12 @@ export default {
   'field.unknown': 'unbekannt',
   'field.none': 'keiner',
 
+  'field.expires': 'Läuft ab',
+  'field.issuer': 'Aussteller',
+  'notify.cert': {
+    one: 'Das Zertifikat von {name} läuft in {count} Tag ab',
+    other: 'Das Zertifikat von {name} läuft in {count} Tagen ab',
+  },
   'issue.title': '{name} ist ausgefallen',
   'issue.intro': '**{name}** antwortet nicht mehr wie erwartet.',
   'issue.autoClose': 'Dieses Issue wird automatisch geschlossen, sobald der Monitor wieder antwortet.',

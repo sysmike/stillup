@@ -55,6 +55,11 @@ export default {
 
   'detail.since': 'since {date}',
   'detail.history': '{days} day history',
+  'detail.certExpires': {
+    one: 'Certificate expires in {count} day, on {date}',
+    other: 'Certificate expires in {count} days, on {date}',
+  },
+  'detail.certExpired': 'Certificate expired on {date}',
   'detail.responseTime': 'Response time',
   'detail.noIncidents': 'No incidents recorded for this monitor.',
 
@@ -110,6 +115,12 @@ export default {
   'field.unknown': 'unknown',
   'field.none': 'none',
 
+  'field.expires': 'Expires',
+  'field.issuer': 'Issuer',
+  'notify.cert': {
+    one: 'Certificate for {name} expires in {count} day',
+    other: 'Certificate for {name} expires in {count} days',
+  },
   'issue.title': '{name} is down',
   'issue.intro': '**{name}** stopped responding as expected.',
   'issue.autoClose': 'This issue closes automatically once the monitor recovers.',

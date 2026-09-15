@@ -53,6 +53,7 @@ the certificate.
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
 | `SITE_URL` | the Pages address | Where the page is served from; only the feed needs it, and only to link to itself |
+| `CERT_WARN_DAYS` | `14` | Days before a TLS certificate expires that are worth hearing about; `0` turns the checks off |
 | `STALE_AFTER` | `30` | Minutes without a check before the page says so instead of vouching for what it shows; `0` turns it off |
 | `SITE_SCRIPTS` | none | Tags added to the page's head, for analytics — see [Custom scripts](#custom-scripts) |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
@@ -110,6 +111,7 @@ works for you, anything else means it does not.
 | `retries` | `1` | Extra attempts before a check counts as failed |
 | `degradedMs` | `0` | Responses slower than this are reported as degraded (`0` disables) |
 | `followRedirects` | `true` | Follow 3xx responses |
+| `cert` | `true` for `https://` | Watch the TLS certificate's expiry; set it on a `tcp` monitor whose port speaks TLS from the start |
 | `group` | none | Groups monitors under a heading |
 | `description` | none | Shown in the monitor's details |
 | `link` | `url` | Address linked in the monitor's details |
@@ -276,8 +278,29 @@ table fails the run rather than quietly going out as JSON.
 A notification goes out when an incident opens and when it closes, so the same
 `INCIDENT_THRESHOLD` that decides an issue is worth opening decides this too; a
 single failed check notifies nobody. Restrict a destination to some of that with
-`"events"`, any of `down`, `degraded` and `up`. A failing destination is logged
-and skipped — it never fails the run or blocks the others.
+`"events"`, any of `down`, `degraded`, `up` and `cert`. A failing destination is
+logged and skipped — it never fails the run or blocks the others.
+
+## Certificates
+
+An expiring TLS certificate is the one outage that announces itself in advance,
+and the handshake that would find it is one the check is making anyway. Every
+`https://` monitor is watched by default, and a `tcp` monitor can be too if it
+says `"cert": true` — implicit TLS only, so an SMTP submission port that starts
+in the clear and upgrades with STARTTLS is not covered.
+
+The certificate is read rather than trusted, so a self-signed or otherwise
+unacceptable chain still reports an expiry instead of a permanent failure. A
+probe that does not answer is left for the next run: the monitor itself already
+says whether the host is up.
+
+It is looked at twice a day rather than every five minutes, since nothing about
+an expiry moves in between, and the result is kept in `history/certs.json`. The
+warning steps down as the date approaches — `CERT_WARN_DAYS` out, then seven
+days, then three, then one — so it is neither said once and forgotten nor
+repeated every run. Renewing the certificate starts that over. The monitor's
+details show the date whatever it is, in the page's usual colour until it comes
+within `CERT_WARN_DAYS`.
 
 ### Custom webhooks
 
@@ -350,6 +373,7 @@ history/daily/<slug>.csv   one aggregated row per day, kept indefinitely
 history/state.json         current status and open issue per monitor
 history/incidents.json     snapshot of recent incident issues and their comments
 history/live.json          current status, uptime and incidents, read by the page itself
+history/certs.json         TLS expiry per monitor, and which warnings have gone out
 ```
 
 The build is a snapshot, so the deployed page also fetches `history/live.json`
@@ -423,8 +447,8 @@ node --test
 Covers configuration parsing, the redaction that keeps a private monitor's URL
 out of issues, the daily rollup, the notification payloads in each language, the
 language dictionaries themselves, what the build writes into the page's head,
-the Atom feed, and the SMTP client against a server that speaks the protocol
-back. No dependencies, and the Test workflow
+the Atom feed, the certificate warnings and their stepping down, and the SMTP
+client against a server that speaks the protocol back. No dependencies, and the Test workflow
 runs the same command on every push that touches `scripts/` or `test/`.
 
 ## Notes

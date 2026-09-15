@@ -20,11 +20,12 @@ function readJson(file, fallback) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
 }
 
-const { site, groups, monitors, incidents: incidentSettings, staleAfter } = loadConfig(
+const { site, groups, monitors, incidents: incidentSettings, staleAfter, certWarnDays } = loadConfig(
   process.env.CONFIG_VARS,
   process.env.CONFIG_SECRETS,
 );
 const state = readJson('history/state.json', {});
+const certs = readJson('history/certs.json', {});
 const incidents = readJson('history/incidents.json', []);
 const keys = dayKeys(DAYS);
 
@@ -79,6 +80,9 @@ const summaryMonitors = monitors.map((monitor) => {
     lastMs: latest?.ms || null, // 0 means nothing was measured, as for a dummy
     lastCode: latest?.code ?? null,
     uptime: uptimeWindows(daily, keys),
+    // Only when it expires: how long that is depends on when the page is read,
+    // not on when it was built.
+    certExpires: certs[monitor.slug]?.validTo || null,
     days,
   };
 });
@@ -128,6 +132,7 @@ writeFileSync(
       overall,
       days: DAYS,
       staleAfter,
+      certWarnDays,
       monitors: summaryMonitors,
       incidents: incidents.slice(0, 20),
     },

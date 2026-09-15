@@ -243,7 +243,7 @@ test('a destination hears about every event unless it says otherwise', () => {
       NOTIFY_SOME: JSON.stringify({ url: 'https://example.com/b', events: ['down', 'nonsense'] }),
     }),
   );
-  assert.deepEqual(notifications[0].events, ['down', 'degraded', 'up']);
+  assert.deepEqual(notifications[0].events, ['down', 'degraded', 'up', 'cert']);
   assert.deepEqual(notifications[1].events, ['down']);
 });
 

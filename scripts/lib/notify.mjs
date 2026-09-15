@@ -10,8 +10,8 @@
 import { english } from '../../site/lang/i18n.mjs';
 import { sendMail } from './smtp.mjs';
 
-const COLORS = { down: '#f04438', degraded: '#f79009', up: '#12b76a' };
-const MARKS = { down: '🔴', degraded: '🟠', up: '🟢' };
+const COLORS = { down: '#f04438', degraded: '#f79009', up: '#12b76a', cert: '#f79009' };
+const MARKS = { down: '🔴', degraded: '🟠', up: '🟢', cert: '🟡' };
 
 export const SEND_TIMEOUT = 10000;
 
@@ -26,6 +26,9 @@ export const TARGET_TYPES = ['slack', 'mattermost', 'discord', 'teams', 'teams-c
 // language, so it is put in front rather than kept in the dictionary.
 export function headline(event, t = english.t) {
   const mark = MARKS[event.status] || '';
+  if (event.status === 'cert') {
+    return `${mark} ${t('notify.cert', { name: event.name, count: event.daysLeft })}`;
+  }
   const key =
     event.status === 'up'
       ? event.downFor
@@ -42,6 +45,8 @@ export function headline(event, t = english.t) {
 // followed by a colon.
 function facts(event, t) {
   return [
+    event.validTo ? { label: t('field.expires'), value: event.validTo } : null,
+    event.issuer ? { label: t('field.issuer'), value: event.issuer } : null,
     event.error ? { label: t('field.error'), value: event.error } : null,
     event.code ? { label: t('field.code'), value: String(event.code) } : null,
     event.url ? { label: t('field.url'), value: event.url } : null,
@@ -113,14 +118,17 @@ function teamsPayload(event, t, legacy) {
 }
 
 // Nothing is assumed about a custom endpoint, so it receives the event itself.
+const EVENT_NAMES = { up: 'recovered', cert: 'certificate', down: 'down', degraded: 'down' };
+
 const customPayload = (event, t) => ({
-  event: event.status === 'up' ? 'recovered' : 'down',
+  event: EVENT_NAMES[event.status] || 'down',
   status: event.status,
   previousStatus: event.previousStatus,
   monitor: { slug: event.slug, name: event.name, url: event.url || null },
   error: event.error || null,
   code: event.code || null,
   downFor: event.downFor || null,
+  certificate: event.validTo ? { validTo: event.validTo, daysLeft: event.daysLeft, issuer: event.issuer || null } : null,
   issue: event.issueUrl ? { number: event.issueNumber, url: event.issueUrl } : null,
   site: event.site || null,
   at: event.at,

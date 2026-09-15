@@ -16,7 +16,7 @@ import { TARGET_TYPES } from './notify.mjs';
 const MONITOR_PREFIX = 'MONITOR_';
 const GROUP_PREFIX = 'GROUP_';
 const NOTIFY_PREFIX = 'NOTIFY_';
-const NOTIFY_EVENTS = ['down', 'degraded', 'up'];
+const NOTIFY_EVENTS = ['down', 'degraded', 'up', 'cert'];
 const DEFAULT_INCIDENT_LABELS = ['status', 'incident'];
 
 const DEFAULTS = {
@@ -216,6 +216,10 @@ export function loadConfig(varsJson, secretsJson) {
       description: parsed.description || null,
       headers: parsed.headers || {},
       link: parsed.link || null,
+      // An https monitor presents a certificate as a matter of course. A tcp
+      // one may or may not, and its port is no evidence either way, so it says
+      // so itself — implicit TLS only, not STARTTLS.
+      cert: parsed.cert ?? (type === 'http' && parsed.url.startsWith('https://')),
       private: parsed.private ?? Object.hasOwn(secrets, name),
     });
   }
@@ -315,6 +319,11 @@ export function loadConfig(varsJson, secretsJson) {
     .map((label) => label.trim())
     .filter((label) => label && label !== MAINTENANCE_LABEL);
 
+  // Days before a certificate runs out that are worth hearing about. Zero
+  // turns the warnings off along with the probe behind them.
+  const certWarnDays = Math.max(0, Number(vars.CERT_WARN_DAYS ?? 14));
+  if (!Number.isFinite(certWarnDays)) throw new Error('Variable CERT_WARN_DAYS is not a number');
+
   // Minutes without a check before the page stops vouching for what it shows.
   // Six missed runs at the default five minute schedule, which leaves room for
   // the drift a cron on a shared runner has anyway. Zero turns the warning off,
@@ -330,5 +339,5 @@ export function loadConfig(varsJson, secretsJson) {
     monitorsHeading: (vars.MONITORS_HEADING || '').trim() || DEFAULT_MONITORS_HEADING,
   };
 
-  return { site, groups, monitors, incidents, notifications, staleAfter };
+  return { site, groups, monitors, incidents, notifications, staleAfter, certWarnDays };
 }
