@@ -170,3 +170,12 @@ test('a card cannot be used to smuggle markup into the head', () => {
   assert.match(out, /og:description" content="&quot;&gt;&lt;script&gt;/);
   assert.doesNotMatch(out, /<script>alert/);
 });
+
+test('a description blanked with a space is no description', () => {
+  // A single space is how the line under the banner is turned off, and it is
+  // truthy: left alone it would reach a card as a space.
+  const out = build({ description: ' ' });
+  assert.match(out, /<meta name="description" content="Service status and uptime history" \/>/);
+  assert.match(out, /<meta property="og:description" content="Service status and uptime history" \/>/);
+  assert.doesNotMatch(out, /content=" "/);
+});

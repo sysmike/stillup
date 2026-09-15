@@ -85,7 +85,9 @@ export function stamp(html, { title, lang, dir, t, description, url, image, scri
   });
 
   out = out.replace(/<title>[^<]*<\/title>/i, `<title>${escape(title)}</title>`);
-  const summary = description || t('meta.description');
+  // Blanked rather than unset: a single space is how the line under the banner
+  // is turned off, and it is truthy. A card wants a sentence or nothing.
+  const summary = (description || '').trim() || t('meta.description');
   out = out.replace(/(<meta\s+name="description"\s+content=")[^"]*"/i, `$1${escape(summary)}"`);
 
   // After the description, so everything a card is built from sits together.
