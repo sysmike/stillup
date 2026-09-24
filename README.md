@@ -1,8 +1,9 @@
 # Status page
 
-Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime) that runs entirely on GitHub: checks run as a scheduled
-Action, history is committed to this repository, outages open and close GitHub
-issues, and the status page is published with GitHub Pages.
+Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime),
+running entirely on GitHub: checks run as a scheduled Action, history is
+committed to this repository, outages open and close GitHub issues, and the
+status page is published with GitHub Pages.
 
 <img src=".screenshots/dark.png" alt="Status page in the dark theme">
 
@@ -45,17 +46,17 @@ the certificate.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `SITE_TITLE` | `Status` | Page and browser title |
-| `SITE_DESCRIPTION` | none | Line under the status banner |
+| `SITE_DESCRIPTION` | none | Line under the status banner, and the description a search result or a shared link shows |
 | `SITE_LINK` | none | Link in the footer |
 | `SITE_LOGO` | none | Logo URL shown next to the title |
+| `SITE_URL` | the Pages address | Where the page is served from, for the feed and the shared-link card to give their own address |
 | `SITE_THEME` | `auto` | `auto`, `light` or `dark` |
 | `SITE_LANG` | `en` | Language of the page, its issues and its notifications: `en` or `de`, see [Languages](#languages) |
+| `SITE_SCRIPTS` | none | Tags added to the page's head, for analytics — see [Custom scripts](#custom-scripts) |
 | `INCIDENT_THRESHOLD` | `2` | Consecutive failed checks before an issue is opened |
 | `INCIDENT_LABELS` | `status,incident` | Labels applied to incident issues. `maintenance` is reserved and ignored here |
-| `SITE_URL` | the Pages address | Where the page is served from; only the feed needs it, and only to link to itself |
-| `CERT_WARN_DAYS` | `14` | Days before a TLS certificate expires that are worth hearing about; `0` turns the checks off |
-| `STALE_AFTER` | `30` | Minutes without a check before the page says so instead of vouching for what it shows; `0` turns it off |
-| `SITE_SCRIPTS` | none | Tags added to the page's head, for analytics — see [Custom scripts](#custom-scripts) |
+| `STALE_AFTER` | `30` | Minutes without a check before the banner says the status may be out of date rather than vouching for it; `0` turns it off |
+| `CERT_WARN_DAYS` | `14` | How many days before a TLS certificate expires the first warning goes out; `0` stops the certificates being checked |
 | `WINDOW_HEADING` | `Window` | The maintenance form's window field label, which is how the start of planned work is found |
 | `MONITORS_HEADING` | `Affected monitors` | The maintenance form's monitors field label, which is how affected monitors are found |
 
@@ -78,7 +79,6 @@ checked by opening a connection: the monitor is up when the handshake
 completes, and the measured time is the handshake itself. With `keyword` set,
 the check also waits for the first chunk the server sends and matches it
 against that string, which covers banner protocols such as SMTP, SSH or IMAP.
-It also checks for TLS certificate expiry date and warns accordingly.
 `method`, `headers`, `body`, `expectedStatus` and `followRedirects` do not
 apply to a TCP monitor, and its address is not offered as a link — set `link`
 if the monitor should point somewhere a browser can follow.
@@ -91,6 +91,12 @@ A `dummy://` URL is not checked at all and is always reported up, for a
 service whose state is followed somewhere else, or to hold a place on the page.
 Everything else about the monitor works as usual, but nothing is measured, so
 it has no response times.
+
+An `https://` monitor also has its TLS certificate watched. The expiry is read
+twice a day and shown in the monitor's details, and a warning goes out to the
+notification destinations `CERT_WARN_DAYS` before the date, then again as it
+draws closer. A `tcp` monitor can join in with `"cert": true` if its port speaks
+TLS from the start — STARTTLS is not covered.
 
 **ICMP does not work on GitHub-hosted runners.** They are Azure virtual
 machines, and Azure blocks ICMP, so a ping monitor reports `socket: Operation
@@ -154,16 +160,16 @@ which is what happens when no group is configured at all.
 
 ## Custom scripts
 
-`SITE_SCRIPTS` adds tags to the end of the page's head. The common case is an
-analytics snippet, and the common case is a bare URL:
+`SITE_SCRIPTS` adds tags to the end of the page's head. Most of the time that
+is an analytics snippet, and most of the time a bare URL is all it takes:
 
 ```
 SITE_SCRIPTS = https://cloud.umami.is/script.js
 ```
 
 Most vendors want an attribute alongside it, which is what the object form is
-for. Every key other than `code` becomes an attribute, so a snippet translates
-across a field at a time:
+for. Every key other than `code` becomes an attribute, so a snippet can be
+translated a field at a time:
 
 ```json
 { "src": "https://cloud.umami.is/script.js", "defer": true, "data-website-id": "abc-123" }
@@ -191,10 +197,11 @@ The page reads those files in the browser and the workflows read them on the
 runner, so a site set to a language sounds like itself everywhere: on the page,
 in the issues it opens, and in the notifications it sends.
 
-The build writes the title, the description and the shell's own text into
-`index.html` as well, so a chat client unfurling the link or a search result
-crawling the page gets what the site was configured as rather than the defaults
-in the file.
+The build writes the title, the description, the shell's own text and the
+`og:` and `twitter:` tags into `index.html` as well. Nothing that builds a link
+preview runs the page's script, so without that a link shared in chat would
+advertise every deployment as "Status" in English whatever it was configured
+as.
 
 Times are shown in the reader's own time zone whatever the language is, and the
 wording of dates and durations follows the language rather than the reader's
@@ -297,6 +304,7 @@ A custom endpoint receives the event itself:
   "error": "connect ECONNREFUSED",
   "code": null,
   "downFor": null,
+  "certificate": null,
   "issue": { "number": 42, "url": "https://github.com/acme/status/issues/42" },
   "site": "Acme Status",
   "at": "2026-03-01T12:00:00Z",
@@ -304,9 +312,11 @@ A custom endpoint receives the event itself:
 }
 ```
 
-`downFor` is filled in on recovery, `error` and `code` on an outage. A private
-monitor sends no URL, the same as everywhere else. Add `"headers"` for an
-endpoint that wants a token, and `"method"` if it does not want `POST`.
+`downFor` is filled in on recovery, `error` and `code` on an outage, and
+`certificate` on a `cert` event, where it carries `validTo`, `daysLeft` and
+`issuer`. A private monitor sends no URL, the same as everywhere else. Add
+`"headers"` for an endpoint that wants a token, and `"method"` if it does not
+want `POST`.
 
 ### Email
 
@@ -323,9 +333,9 @@ Credentials go in the URL, percent-encoded — `@` in a username becomes `%40`.
 AUTH PLAIN and AUTH LOGIN are supported, and no authentication at all when the
 URL carries no credentials.
 
-**Port 25 does not work on GitHub's runners.**
-Submission ports are not blocked: use 587 (`smtp://`, STARTTLS) or 465 (`smtps://`), which
-is what a mail server offers for authenticated sending anyway.
+**Port 25 does not work on GitHub's runners.** The submission ports are not
+blocked, so use 587 (`smtp://`, STARTTLS) or 465 (`smtps://`) — which is what a
+mail server offers for authenticated sending anyway.
 
 ## How it works
 
@@ -385,8 +395,7 @@ wrote it down. Nothing changes state when the window opens: the page works out
 which group an entry belongs to every time it draws, so the entry moves on its
 own. The start is read from the form's **Window** field, which wants the date
 first — `2026-03-14`, optionally with a 24 hour time, in UTC. Anything it cannot
-read counts as no window at all, and the entry is listed as happening now, which
-is what it would have been before any of this was read.
+read counts as no window at all, and the entry is listed as happening now.
 
 Issues labelled with the incident label show up on the page, so you can also
 open one by hand for planned work: the **Planned maintenance** issue template
@@ -438,9 +447,10 @@ node --test
 Covers configuration parsing, the redaction that keeps a private monitor's URL
 out of issues, the daily rollup, the notification payloads in each language, the
 language dictionaries themselves, what the build writes into the page's head,
-the Atom feed, the certificate warnings and their stepping down, and the SMTP
-client against a server that speaks the protocol back. No dependencies, and the Test workflow
-runs the same command on every push that touches `scripts/` or `test/`.
+the Atom feed, the certificate warnings and how they step down, and the SMTP
+client against a server that speaks the protocol back. No dependencies, and the
+Test workflow runs the same command on every push that touches `scripts/`,
+`test/` or `site/`.
 
 ## Notes
 

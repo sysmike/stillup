@@ -60,7 +60,6 @@ export default {
   'incidents.title': 'Vorfälle',
   'incidents.active': 'Aktiv',
   'incidents.upcoming': 'Geplant',
-  'incident.startsIn': 'Beginnt {when}',
   'incidents.earlier': 'Früher',
   'incidents.empty': {
     one: 'Keine Vorfälle am letzten Tag.',
@@ -68,11 +67,14 @@ export default {
   },
   'incidents.all': 'Alle Vorfälle auf GitHub',
 
+  'incidents.feed': 'Atom-Feed',
+
   'feed.ongoing': 'Andauernd',
   'feed.resolvedAfter': 'Behoben nach {duration}',
   'feed.completedAfter': 'Abgeschlossen nach {duration}',
-  'incidents.feed': 'Atom-Feed',
+
   'incident.downFor': 'Ausgefallen seit {duration}',
+  'incident.startsIn': 'Beginnt {when}',
   'incident.maintenanceOpened': 'Wartung, eröffnet {when}',
   'incident.resolved': 'Behoben {when} nach {duration}',
   'incident.completed': 'Abgeschlossen {when} nach {duration}',

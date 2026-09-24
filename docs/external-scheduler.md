@@ -1,7 +1,7 @@
 # Triggering checks from your own server
 
-GitHub's `schedule` event is best effort. Dispatching the workflow from a machine you control
-gives an exact interval instead.
+GitHub's `schedule` event is best effort. Dispatching the workflow from a
+machine you control gives an exact interval instead.
 
 The **Uptime** workflow already accepts `workflow_dispatch`, so nothing in the
 repository has to change.

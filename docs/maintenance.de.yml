@@ -27,7 +27,7 @@ body:
         innerhalb von ein bis zwei Minuten neu auf.
 
         Halte den Titel kurz und nenne darin das Zeitfenster, zum Beispiel
-        `Wartung: Datenbank-Upgrade, 14. März 02:00 UTC`.
+        `Wartung: Datenbank-Upgrade, 2026-03-14 02:00 UTC`.
   # Der Beginn wird aus diesem Feld gelesen, damit angekündigte Arbeiten als
   # geplant statt als laufend erscheinen. Das Datum als 2026-03-14 schreiben,
   # die Uhrzeit ist optional.

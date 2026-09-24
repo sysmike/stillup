@@ -66,7 +66,6 @@ export default {
   'incidents.title': 'Incidents',
   'incidents.active': 'Active',
   'incidents.upcoming': 'Upcoming',
-  'incident.startsIn': 'Starts {when}',
   'incidents.earlier': 'Earlier',
   'incidents.empty': {
     one: 'No incidents in the last day.',
@@ -74,11 +73,14 @@ export default {
   },
   'incidents.all': 'All incidents on GitHub',
 
+  'incidents.feed': 'Atom feed',
+
   'feed.ongoing': 'Ongoing',
   'feed.resolvedAfter': 'Resolved after {duration}',
   'feed.completedAfter': 'Completed after {duration}',
-  'incidents.feed': 'Atom feed',
+
   'incident.downFor': 'Down for {duration}',
+  'incident.startsIn': 'Starts {when}',
   'incident.maintenanceOpened': 'Maintenance, opened {when}',
   'incident.resolved': 'Resolved {when} after {duration}',
   'incident.completed': 'Completed {when} after {duration}',
@@ -124,7 +126,7 @@ export default {
     other: 'Certificate for {name} expires in {count} days',
   },
   'issue.title': '{name} is down',
-  'issue.intro': '**{name}** stopped responding as expected.',
+  'issue.intro': '**{name}** is no longer responding as expected.',
   'issue.autoClose': 'This issue closes automatically once the monitor recovers.',
   'issue.recovered': 'Recovered after {duration} — {code} in {ms}ms.',
 

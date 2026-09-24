@@ -176,7 +176,7 @@ function language(value) {
   const lang = (value || '').trim();
   if (!lang) return 'en';
   if (!LANGUAGES.includes(lang)) {
-    throw new Error(`SITE_LANG is "${lang}", expected one of ${LANGUAGES.join(', ')}`);
+    throw new Error(`Variable SITE_LANG is "${lang}", expected one of ${LANGUAGES.join(', ')}`);
   }
   return lang;
 }
