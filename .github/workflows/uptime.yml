@@ -39,17 +39,42 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/incidents.mjs
 
+      # Runs are supposed to be serialised by the concurrency group above, and
+      # mostly are, but two have been seen to overlap. The loser of that race
+      # cannot rebase its way out: both runs appended to the same files from the
+      # same starting point, and today's row in each daily CSV is a counter both
+      # of them incremented. A rebase conflicts on every file and leaves the
+      # checkout mid-rebase, which is how this used to fail the run outright.
+      #
+      # So it takes whatever landed first and applies this run's results on top,
+      # which is the one resolution that keeps both. The snapshots that come
+      # with it — state, incidents, live, certs — are the other run's, which are
+      # just as current: it read the same monitors and the same issues seconds
+      # earlier, and the next run recomputes them all from the history anyway.
       - name: Commit history
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add history
-          git diff --quiet --cached && exit 0
-          git commit -m "chore: status $(date -u +%Y-%m-%dT%H:%MZ)"
+
           for attempt in 1 2 3; do
-            git push && exit 0
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+            git add history
+            if git diff --quiet --cached; then
+              echo "Nothing to commit."
+              exit 0
+            fi
+
+            git commit -m "chore: status $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push; then
+              exit 0
+            fi
+
+            echo "::warning::Another run pushed first; re-applying this run's results on top (attempt ${attempt})."
+            git fetch origin "${GITHUB_REF_NAME}"
+            git reset --hard "origin/${GITHUB_REF_NAME}"
+            node scripts/apply-results.mjs
           done
+
+          echo "::error::Could not push the history after three attempts."
           exit 1
 
   # Pages rebuilds on its own once a day; this keeps an outage from waiting

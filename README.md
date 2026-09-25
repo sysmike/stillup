@@ -347,7 +347,11 @@ mail server offers for authenticated sending anyway.
    `INCIDENT_THRESHOLD` times in a row, comments the downtime and closes the
    issue on recovery, notifies whatever `NOTIFY_*` configures, and writes a
    snapshot of recent incidents.
-3. The history is committed back to the branch.
+3. The history is committed back to the branch. If another run pushed first,
+   this one takes what landed and applies its own results on top rather than
+   rebasing: both runs appended to the same files from the same starting point,
+   and today's row in each daily CSV is a counter both of them incremented, so
+   neither side of that conflict is the right answer.
 4. If anything the page shows changed, the Pages workflow deploys
    immediately; otherwise the site rebuilds once a day.
    That covers a monitor changing state and an incident issue being opened,
@@ -458,6 +462,10 @@ Test workflow runs the same command on every push that touches `scripts/`,
   dropped under load, and GitHub disables schedules in repositories with no
   activity for 60 days. For an exact interval, trigger the workflow from a
   machine you control: [docs/external-scheduler.md](docs/external-scheduler.md).
+- The concurrency group is meant to keep two Uptime runs from overlapping, and
+  mostly does, but they have been seen to run at once anyway. The commit step
+  handles losing that race, so a drifting schedule costs nothing worse than a
+  warning in the log.
 - Uptime percentages count degraded checks as up, in the figures and in the
   day tooltip alike; only a failed check counts against them.
 - The page names its modules with `modulepreload` in the head. Without that a
