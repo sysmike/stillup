@@ -5,7 +5,9 @@ import {
   DEFAULT_MONITORS_HEADING,
   DEFAULT_WINDOW_HEADING,
   affectedMonitors,
+  WORKFLOW_BOT,
   isMaintenance,
+  isTrusted,
   marker,
   markedMonitor,
   stripMarker,
@@ -144,4 +146,34 @@ test('both templates name the window heading their instructions expect', () => {
   assert.equal(label, 'Zeitfenster');
   const told = readFileSync(new URL(file, import.meta.url), 'utf8').match(/WINDOW_HEADING auf "([^"]+)"/)?.[1];
   assert.equal(told, label, 'the file tells the reader to set a heading it does not use');
+});
+
+const by = (association, login = 'someone', type = 'User') => ({
+  author_association: association,
+  user: { login, type },
+});
+
+test('people with access to the repository speak for the page', () => {
+  assert.equal(isTrusted(by('OWNER')), true);
+  assert.equal(isTrusted(by('MEMBER')), true);
+  assert.equal(isTrusted(by('COLLABORATOR')), true);
+});
+
+test('this workflow speaks for the page, recognised by its name', () => {
+  // It holds CONTRIBUTOR, which on its own would let in anyone who once had a
+  // pull request merged.
+  assert.equal(isTrusted(by('CONTRIBUTOR', WORKFLOW_BOT, 'Bot')), true);
+});
+
+test('anyone else does not, however the issue is labelled or marked', () => {
+  // On a public repository anyone can open an issue, the maintenance template
+  // applies its labels for them, and the marker is an HTML comment they can type.
+  assert.equal(isTrusted(by('NONE')), false);
+  assert.equal(isTrusted(by('FIRST_TIME_CONTRIBUTOR')), false);
+  assert.equal(isTrusted(by('CONTRIBUTOR')), false, 'a merged pull request is not a say over the page');
+  assert.equal(isTrusted(by('NONE', 'dependabot[bot]', 'Bot')), false, 'nor is being some other bot');
+  // A person cannot register a [bot] login, but a type that says User is not
+  // taken on the name alone either.
+  assert.equal(isTrusted(by('NONE', WORKFLOW_BOT, 'User')), false);
+  assert.equal(isTrusted(undefined), false);
 });

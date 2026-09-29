@@ -14,6 +14,7 @@ import {
   MAINTENANCE_LABEL,
   affectedMonitors,
   isMaintenance,
+  isTrusted,
   marker,
   markedMonitor,
   stripMarker,
@@ -34,6 +35,12 @@ const RESULTS_FILE = `${ROOT}scripts/.results.json`;
 // thread is one click away on GitHub, and commentCount says how many there are.
 const COMMENTS_PER_ISSUE = 5;
 const COMMENT_LENGTH = 800;
+// Comments are read a hundred to a page, and no more than three pages back:
+// enough that anyone commenting on an incident cannot push the maintainers'
+// updates out of reach, without an incident's thread costing more than a few
+// requests the one time it changes.
+const COMMENT_PAGE = 100;
+const COMMENT_PAGES = 3;
 
 function readJson(file, fallback) {
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : fallback;
@@ -57,9 +64,13 @@ for (const label of settings.labels) {
 // The maintenance issue template applies this label, so it has to exist.
 await ensureLabel(MAINTENANCE_LABEL, '0969da', 'Planned maintenance shown on the status page');
 
-const open = await api(
-  `/repos/${repo}/issues?state=open&labels=${encodeURIComponent(primaryLabel)}&per_page=100`,
-);
+// Only issues from someone who can speak for the page. The label and the marker
+// are both within reach of anyone who can open an issue, and an issue taken for
+// a monitor's incident gets closed, commented on and announced when the monitor
+// is up — or stands in for a real incident that is then never opened.
+const open = (
+  await api(`/repos/${repo}/issues?state=open&labels=${encodeURIComponent(primaryLabel)}&per_page=100`)
+).filter(isTrusted);
 
 for (const result of results) {
   const previous = state[result.slug] || { status: 'up', since: result.timestamp, failures: 0 };
@@ -166,34 +177,48 @@ for (const result of results) {
 writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
 
 // Snapshot of recent incidents so the site builds without further API calls.
-const recent = await api(
-  `/repos/${repo}/issues?state=all&labels=${encodeURIComponent(primaryLabel)}&per_page=30&sort=created&direction=desc`,
-);
+const recent = (
+  await api(
+    `/repos/${repo}/issues?state=all&labels=${encodeURIComponent(primaryLabel)}&per_page=100&sort=created&direction=desc`,
+  )
+).filter(isTrusted);
 
 // The issue list already says how many comments each issue has, so a run only
 // asks for the ones it does not have yet: an issue whose count is unchanged
 // keeps the comments from the previous snapshot. A quiet run therefore costs
-// no extra requests at all.
+// no extra requests at all. That count includes comments the page will not
+// show, so it is kept apart from the one the page does, as `seenComments`.
 const previous = new Map(readJson(INCIDENTS_FILE, []).map((entry) => [entry.number, entry]));
 
 async function commentsFor(issue) {
-  if (!issue.comments) return [];
+  if (!issue.comments) return { count: 0, comments: [] };
   const before = previous.get(issue.number);
-  if (before && before.commentCount === issue.comments && before.comments) return before.comments;
+  if (before && before.seenComments === issue.comments && before.comments) {
+    return { count: before.commentCount, comments: before.comments };
+  }
 
-  const fetched = await api(
-    `/repos/${repo}/issues/${issue.number}/comments?per_page=${COMMENTS_PER_ISSUE}&sort=created&direction=desc`,
-  );
-  return fetched
-    .slice(0, COMMENTS_PER_ISSUE)
-    .map((comment) => ({
+  // The endpoint lists a thread oldest first and ignores any request to sort
+  // it, so the newest comments are on the last page rather than the first.
+  const last = Math.ceil(issue.comments / COMMENT_PAGE);
+  const fetched = [];
+  for (let page = Math.max(1, last - COMMENT_PAGES + 1); page <= last; page += 1) {
+    fetched.push(
+      ...(await api(`/repos/${repo}/issues/${issue.number}/comments?per_page=${COMMENT_PAGE}&page=${page}`)),
+    );
+  }
+
+  const trusted = fetched.filter(isTrusted);
+  return {
+    // Exact unless a thread runs past the pages read, when it counts only those.
+    count: trusted.length,
+    comments: trusted.slice(-COMMENTS_PER_ISSUE).map((comment) => ({
       author: comment.user?.login || 'unknown',
-      bot: comment.user?.type === 'Bot' || /\[bot\]$/.test(comment.user?.login || ''),
+      bot: comment.user?.type === 'Bot',
       createdAt: comment.created_at,
       url: comment.html_url,
       body: stripMarker(comment.body).trim().slice(0, COMMENT_LENGTH),
-    }))
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    })),
+  };
 }
 
 const comments = new Map();
@@ -222,8 +247,9 @@ const snapshot = JSON.stringify(
         // The page renders this itself so a reader never has to leave for GitHub.
         body: stripMarker(issue.body).trim().slice(0, 2000),
         maintenance,
-        commentCount: issue.comments,
-        comments: comments.get(issue.number) || [],
+        commentCount: comments.get(issue.number)?.count ?? 0,
+        seenComments: issue.comments,
+        comments: comments.get(issue.number)?.comments ?? [],
       };
     }),
   null,

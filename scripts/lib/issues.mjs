@@ -13,6 +13,25 @@ export const markedMonitor = (body) => (body || '').match(MARKER)?.[1] || null;
 
 export const stripMarker = (body) => (body || '').replace(new RegExp(MARKER, 'g'), '');
 
+// On a public repository anyone can open an issue, and the maintenance template
+// applies its labels for whoever uses it, so a label says nothing about who is
+// speaking. Neither does the marker, which is an HTML comment anyone can type
+// into a form field. What an issue or a comment may do — appear on the page,
+// stand in for a monitor's open incident — depends on who wrote it instead:
+// someone with access to the repository, or this workflow itself.
+//
+// CONTRIBUTOR is not enough: it means a pull request of theirs was merged once,
+// not that they speak for the page. The workflow's own account happens to hold
+// it, so it is recognised by name — a `[bot]` login cannot be registered by a
+// person.
+const TRUSTED = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+export const WORKFLOW_BOT = 'github-actions[bot]';
+
+export function isTrusted(item) {
+  if (TRUSTED.has(item?.author_association)) return true;
+  return item?.user?.type === 'Bot' && item.user.login === WORKFLOW_BOT;
+}
+
 // An issue this workflow opened carries the marker, and it only opens issues
 // for monitors that stopped answering. Such an issue is an outage whatever
 // labels it ended up with, which keeps a stray maintenance label from

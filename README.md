@@ -385,7 +385,8 @@ An incident's own view shows the issue body and the newest comments on it, so
 an update posted on the issue reaches the status page: a timeline entry says
 how many comments there are, and the entry opens the conversation. The newest
 five are kept, each cut to 800 characters, with a line pointing at GitHub when
-there are more. A run only asks GitHub for a thread whose comment count
+there are more. Only comments from the people whose issues count are shown —
+see below. A run only asks GitHub for a thread whose comment count
 changed, so a quiet run costs no extra requests.
 
 The page lists an open incident first, whatever its date, so a live outage is
@@ -402,11 +403,17 @@ first — `2026-03-14`, optionally with a 24 hour time, in UTC. Anything it cann
 read counts as no window at all, and the entry is listed as happening now.
 
 Issues labelled with the incident label show up on the page, so you can also
-open one by hand for planned work: the **Planned maintenance** issue template
-applies the `status` and `maintenance` labels and the entry is rendered as
-maintenance rather than as an outage. If `INCIDENT_LABELS` is customised, the
-first label in it has to be the one in
-`.github/ISSUE_TEMPLATE/maintenance.yml`.
+open one by hand for planned work. Only issues and comments from the owner,
+members and collaborators count, along with the workflow's own: on a public
+repository anyone can open an issue, the template applies its labels for them,
+and without that check a stranger could put an entry on the page — or have
+their issue taken for a monitor's incident, closed, and announced as a
+recovery.
+
+The **Planned maintenance** issue template applies the `status` and
+`maintenance` labels, and the entry is rendered as maintenance rather than as an
+outage. If `INCIDENT_LABELS` is customised, the first label in it has to be the
+one in `.github/ISSUE_TEMPLATE/maintenance.yml`.
 
 Two of the template's fields are read rather than only displayed. **Affected
 monitors** links an issue to the monitors it concerns, and **Window** says when
