@@ -18,6 +18,11 @@ status page is published with GitHub Pages.
    for a monitor whose URL should stay private.
 5. Run the **Uptime** workflow once from the Actions tab.
 
+To keep your page apart from the project — its incidents, history and settings
+in one repository, the code in another — see
+[docs/own-deployment.md](docs/own-deployment.md). The **Sync** workflow then
+keeps the page's code up to date on its own.
+
 ## Custom domain
 
 Point DNS at GitHub, then set the domain under **Settings → Pages → Custom

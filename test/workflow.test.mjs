@@ -28,3 +28,24 @@ test('a losing push is retried rather than failing the run at once', () => {
   assert.match(commitStep, /for attempt in 1 2 3/);
   assert.match(commitStep, /::error::/, 'and says so plainly once the attempts run out');
 });
+
+const syncWorkflow = readFileSync(new URL('../.github/workflows/sync.yml', import.meta.url), 'utf8');
+
+test('the sync runs a script that exists', () => {
+  const called = [...syncWorkflow.matchAll(/bash (scripts\/[\w.-]+\.sh)/g)].map((m) => m[1]);
+  assert.deepEqual(called, ['scripts/sync-upstream.sh']);
+  assert.ok(existsSync(new URL(`../${called[0]}`, import.meta.url)));
+});
+
+test('the sync does nothing in the project it follows', () => {
+  // The project is its own upstream, and syncing it with itself would at best
+  // be a no-op and at worst a daily failure for want of a token.
+  assert.match(syncWorkflow, /if: github\.repository != \(vars\.SYNC_UPSTREAM \|\| 'sysmike\/status-page'\)/);
+});
+
+test('the sync tests before it commits, and deploys what it committed', () => {
+  const test = syncWorkflow.indexOf('run: node --test');
+  const commit = syncWorkflow.indexOf('git commit');
+  assert.ok(test > 0 && test < commit, 'the tests run before the commit');
+  assert.match(syncWorkflow, /uses: \.\/\.github\/workflows\/pages\.yml/);
+});

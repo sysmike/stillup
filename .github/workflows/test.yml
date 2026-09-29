@@ -5,18 +5,20 @@ on:
     paths:
       - 'scripts/**'
       - 'test/**'
-      # The suite reads the dictionaries, the page and the stylesheet: it checks
-      # them against each other, so a change to any of them has to run it.
+      # The suite reads the dictionaries, the page, the stylesheet and the
+      # workflows: it checks them against each other, so a change to any of
+      # them has to run it.
       - 'site/**'
-      - '.github/workflows/test.yml'
+      - '.github/workflows/**'
   pull_request:
     paths:
       - 'scripts/**'
       - 'test/**'
-      # The suite reads the dictionaries, the page and the stylesheet: it checks
-      # them against each other, so a change to any of them has to run it.
+      # The suite reads the dictionaries, the page, the stylesheet and the
+      # workflows: it checks them against each other, so a change to any of
+      # them has to run it.
       - 'site/**'
-      - '.github/workflows/test.yml'
+      - '.github/workflows/**'
 
 jobs:
   test:

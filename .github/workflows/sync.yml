@@ -1,0 +1,93 @@
+name: Sync
+
+# Keeps a deployment's code in step with the project it was copied from, and
+# leaves its history alone. In the project itself there is nothing to follow,
+# so it does nothing there.
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+# One sync at a time. Not the uptime group: a waiting run there is replaced by
+# the next one queued, and with Uptime queued every few minutes a waiting sync
+# would be replaced before it ever started. The two only ever meet at the push,
+# which handles it.
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository != (vars.SYNC_UPSTREAM || 'sysmike/status-page')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
+    steps:
+      # GITHUB_TOKEN can push code but never a change to a workflow file, so
+      # following upstream fully takes a token that may. See the README.
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Take upstream's code
+        id: sync
+        env:
+          SYNC_UPSTREAM: ${{ vars.SYNC_UPSTREAM || 'sysmike/status-page' }}
+          SYNC_REF: ${{ vars.SYNC_REF || 'main' }}
+          SYNC_KEEP: ${{ vars.SYNC_KEEP }}
+        run: bash scripts/sync-upstream.sh
+
+      # All or nothing: code from one version of upstream running under the
+      # workflows of another is how a renamed script ends up called by its old
+      # name.
+      - name: Check a workflow change can be pushed
+        env:
+          WORKFLOWS: ${{ steps.sync.outputs.workflows }}
+          HAS_TOKEN: ${{ secrets.SYNC_TOKEN != '' }}
+        run: |
+          if [ "$WORKFLOWS" = true ] && [ "$HAS_TOKEN" != true ]; then
+            echo "::error::Upstream changed a workflow, which GITHUB_TOKEN cannot push. Add a SYNC_TOKEN secret with Contents and Workflows write access to this repository; nothing has been changed."
+            exit 1
+          fi
+
+      - name: Test
+        if: steps.sync.outputs.changed == 'true'
+        run: node --test
+
+      - name: Commit and push
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          UPSTREAM: ${{ vars.SYNC_UPSTREAM || 'sysmike/status-page' }}
+          SHA: ${{ steps.sync.outputs.upstream_sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "chore: sync with ${UPSTREAM}@${SHA:0:7}" -m "https://github.com/${UPSTREAM}/commit/${SHA}"
+
+          # What lands in between is status commits, which touch history/ and
+          # nothing else, while this commit never touches history/ — so a
+          # rebase over them is clean.
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            git pull --rebase -q origin "${GITHUB_REF_NAME}"
+          done
+          echo "::error::Could not push the sync after three attempts."
+          exit 1
+
+  # A push made with GITHUB_TOKEN starts no other workflow, so the page is
+  # rebuilt from here rather than left for the daily build. A push made with
+  # SYNC_TOKEN starts Pages as well; the second build cancels the first, and
+  # both are of the same commit.
+  deploy:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
+    secrets: inherit
