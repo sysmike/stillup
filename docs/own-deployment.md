@@ -37,116 +37,60 @@ without signing in, so the page would stop refreshing between builds. GitHub
 Pages from a private repository also needs a paid plan, and Actions minutes
 stop being free.
 
-## Moving an existing page
+## Giving the sync a token
 
-These steps take a page that runs from the project repository and move it into
-its own. Until the switch in step 5 the old repository goes on running the page
-and keeping its record, so the new one stays quiet until then: two repositories
-checking at once would each hold part of the history, and both would send every
-alert.
+`GITHUB_TOKEN` can push code but not a change to a workflow file, so following
+the project fully takes a token that can. Create a fine-grained token at
+<https://github.com/settings/personal-access-tokens/new>:
 
-### 1. Create the repository
-
-Create an empty **public** repository, for example `status`, and copy the
-current one into it, history and all:
-
-```bash
-git clone --bare https://github.com/<you>/stillup.git
-cd stillup.git
-git push --mirror https://github.com/<you>/status.git
-cd .. && rm -rf stillup.git
-```
-
-Pick a name your account has not used before. If the repository you are moving
-from was renamed, GitHub keeps redirecting its old name — to the scheduler, the
-page's refresh and your clones — only until a new repository takes that name.
-
-### 2. Hold its checks
-
-In the new repository, **Actions → Uptime → Disable workflow**, straight away.
-Its schedule starts as soon as the workflow exists. Runs that happen before you
-get to it do no harm: the switch replaces everything they wrote.
-
-### 3. Set it up
-
-In the new repository:
-
-- **Settings → Pages → Source**: *GitHub Actions*.
-- **Settings → Actions → General → Workflow permissions**: *Read and write
-  permissions*.
-- **Settings → General → Features → Issues → Issue permissions**: *Collaborators
-  only*.
-- **Settings → Secrets and variables → Actions**: recreate every variable and
-  secret the old repository has, notifications included. They are not copied
-  with the code, and nothing checks or alerts from here until step 5.
-
-Then give the sync a token. `GITHUB_TOKEN` can push code but not a change to a
-workflow file, so following the project fully takes a token that can. Create a
-fine-grained token at <https://github.com/settings/personal-access-tokens/new>:
-
-- **Repository access**: *Only select repositories* → the new repository
+- **Repository access**: *Only select repositories* → your page's repository
 - **Repository permissions** → **Contents**: *Read and write*
 - **Repository permissions** → **Workflows**: *Read and write*
 
-Store it in the new repository as the secret `SYNC_TOKEN`. Without it, a sync
+Store it in that repository as the secret `SYNC_TOKEN`. Without it, a sync
 works as long as the project has not changed a workflow. One that has is
 stopped whole, with an error saying why, rather than taking the code without
 the workflows that go with it.
 
-### 4. Know how you would go back
+While you are in the settings, **Settings → General → Features → Issues → Issue
+permissions**: *Collaborators only* keeps the page's issue tracker to the
+people who run it.
 
-Nothing below deletes anything until step 6. If the new page is not right at any
-point in step 5, enable **Uptime** in the old repository again and move the
-domain back if you had moved it: the old page picks up where it stopped.
+## If you also develop the code in your page's repository
 
-### 5. Switch over
+Move the code out, not the page. The page's repository is the one with a
+domain, variables, secrets, incidents and a history, and every one of those
+would have to be moved and switched over; the code has none of them.
 
-Do these in one sitting. Between the first and the last, the page on your domain
-is frozen rather than down: it shows what the old repository last recorded.
-
-1. In the old repository, **Actions → Uptime → Disable workflow**. Its record
-   stops here, and an external scheduler still pointed at it will log failed
-   dispatches until item 5 below.
-2. Bring over everything it recorded since the copy. In a clone of the new
-   repository, with the old repository's name in place of `stillup`:
+1. **Rename the page's repository** to what the page should be called, under
+   **Settings → General**. Everything that pointed at it follows the rename.
+2. **Run Pages** from its Actions tab. The page reads its live data from the
+   repository by name, and the name it was built with changes only when it is
+   built again.
+3. **Create an empty public repository** for the code, under the old name if
+   you like. Do this after step 2: GitHub stops redirecting a renamed
+   repository's old name once a new repository takes it.
+4. **Copy the code into it without the page's data.** In a fresh clone of the
+   page's repository, this removes `history/` from every commit and drops the
+   status commits that are left empty, keeping everything else:
 
    ```bash
-   git pull
-   git fetch https://github.com/<you>/stillup.git main
-   git rm -rq history
-   git checkout FETCH_HEAD -- history
-   git commit -m "chore: take over the history"
-   git push
+   git clone --single-branch https://github.com/<you>/<page>.git code
+   cd code
+   FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --prune-empty --index-filter '
+     git ls-files -z history | grep -zv "^history/.gitkeep$" | xargs -0 -r git rm -q --cached --ignore-unmatch --
+   ' -- main
+   git push https://github.com/<you>/<code>.git main
    ```
 
-   This replaces the new repository's `history/` with the old one's entirely,
-   including anything a run wrote before you held its checks.
-3. In the new repository, enable **Uptime** again and run it from the Actions
-   tab, then run **Sync**. The page is now live at
-   `https://<you>.github.io/<repository>/`; check it there.
-4. Move the domain. A custom domain can belong to one Pages site at a time:
-   remove it under **Settings → Pages** in the old repository, then add it in
-   the new one. DNS does not change, since both are served from
-   `<you>.github.io`. The page is unreachable on the domain until GitHub has
-   issued the new certificate, which is usually a matter of minutes but can
-   take longer.
-5. If an external scheduler dispatches the Uptime workflow, change the
-   repository it names and add the new repository to its token's repository
-   access — see [external-scheduler.md](external-scheduler.md).
-6. Incidents are issues, and they stay in the repository they were opened in.
-   To keep them on the page, open each one in the old repository and use
-   **Transfer issue** in its sidebar. An incident left behind drops off the
-   page.
+5. **In the code's repository, disable Uptime and Pages** under Actions,
+   straight away: their schedules start as soon as the workflows arrive, and
+   the code's repository has no page to run.
+6. **In the page's repository, set `SYNC_UPSTREAM`** to the code's repository,
+   unless it is `sysmike/stillup`, and add `SYNC_TOKEN` as above. From then on
+   the page follows the code.
 
-### 6. Retire the old page
-
-Once the new page has run for a while and you are happy with it, in the old
-repository:
-
-- **Actions → Pages**: *Disable workflow*. Leave **Test** enabled, and
-  **Sync**, which does nothing there.
-- Delete its variables and secrets.
-- Delete `history/` in an ordinary commit, if you like: the sync never reads
-  it, and the data stays in the git history should you ever want it back.
-- Open **Issue permissions** back up to everyone if you want public bug
-  reports.
+If an external scheduler dispatches the Uptime workflow, point it at the page's
+new name too — see [external-scheduler.md](external-scheduler.md). It keeps
+working through the redirect in the meantime, but only for as long as nothing
+takes the old name.
