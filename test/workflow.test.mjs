@@ -40,7 +40,7 @@ test('the sync runs a script that exists', () => {
 test('the sync does nothing in the project it follows', () => {
   // The project is its own upstream, and syncing it with itself would at best
   // be a no-op and at worst a daily failure for want of a token.
-  assert.match(syncWorkflow, /if: github\.repository != \(vars\.SYNC_UPSTREAM \|\| 'sysmike\/status-page'\)/);
+  assert.match(syncWorkflow, /if: github\.repository != \(vars\.SYNC_UPSTREAM \|\| 'sysmike\/stillup'\)/);
 });
 
 test('the sync tests before it commits, and deploys what it committed', () => {

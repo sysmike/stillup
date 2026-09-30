@@ -165,7 +165,7 @@ test('the message carries the headers a server expects', async () => {
   assert.match(sent, /^Subject: =\?UTF-8\?B\?/m, 'a subject outside ASCII is an encoded word');
   assert.match(sent, /^MIME-Version: 1\.0$/m);
   assert.match(sent, /^Content-Type: text\/plain; charset=utf-8$/m);
-  assert.match(sent, /^Message-ID: <.+@status-page>$/m);
+  assert.match(sent, /^Message-ID: <.+@stillup>$/m);
   assert.match(sent, /Database stopped responding\./);
 });
 
@@ -181,7 +181,7 @@ test('a header stays as it is while it is ASCII', () => {
 });
 
 test('the message ends its headers with a blank line', () => {
-  const built = buildMessage({ ...message, date: new Date('2026-03-01T12:00:00Z'), id: 'fixed@status-page' });
+  const built = buildMessage({ ...message, date: new Date('2026-03-01T12:00:00Z'), id: 'fixed@stillup' });
   const [headers, body] = built.split('\r\n\r\n');
   assert.match(headers, /^From: status@example\.com\r\n/);
   assert.equal(body, 'Database stopped responding.');

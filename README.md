@@ -1,4 +1,4 @@
-# Status page
+# stillup
 
 Uptime monitoring inspired by [Upptime](https://github.com/upptime/upptime),
 running entirely on GitHub: checks run as a scheduled Action, history is

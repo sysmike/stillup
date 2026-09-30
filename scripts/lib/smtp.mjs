@@ -132,7 +132,7 @@ export function buildMessage({ from, to, subject, text, date = new Date(), id = 
   return `${headers.join(CRLF)}${CRLF}${CRLF}${dotStuff(text)}`;
 }
 
-const randomId = () => `${Date.now()}.${Math.random().toString(36).slice(2)}@status-page`;
+const randomId = () => `${Date.now()}.${Math.random().toString(36).slice(2)}@stillup`;
 
 // smtp://user:pass@host:port sends on a plain connection, upgrading with
 // STARTTLS where it is offered; smtps:// opens TLS straight away.
@@ -174,7 +174,7 @@ export async function sendMail(options, connectors = {}) {
   const { host, port, secure, username, password } = { ...parseUrl(options.url), ...options };
   const plain = connectors.net || netConnect;
   const tls = connectors.tls || tlsConnect;
-  const client = hostname() || 'status-page';
+  const client = hostname() || 'stillup';
 
   const socket = secure
     ? tls({ host, port, servername: host, ...options.tlsOptions })

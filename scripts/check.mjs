@@ -73,7 +73,7 @@ async function httpRequest(monitor) {
   try {
     const response = await fetch(monitor.url, {
       method: monitor.method,
-      headers: { 'user-agent': 'status-page-monitor', ...monitor.headers },
+      headers: { 'user-agent': 'stillup', ...monitor.headers },
       body: monitor.body,
       redirect: monitor.followRedirects ? 'follow' : 'manual',
       signal: controller.signal,

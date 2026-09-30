@@ -12,7 +12,8 @@ Fine-grained token at
 <https://github.com/settings/personal-access-tokens/new>:
 
 - **Resource owner**: *Your username*
-- **Repository access**: *Only select repositories* → `status-page`
+- **Repository access**: *Only select repositories* → the repository the page
+  runs from
 - **Repository permissions** → **Actions**: *Read and write*
 - **Expiration**: pick a date you will actually act on; the checks stop
   silently when the token expires
@@ -23,20 +24,25 @@ than this job requires.
 ## 2. Store it on the server
 
 ```bash
-sudo install -m 600 /dev/null /etc/status-page.env
-echo 'STATUS_PAGE_TOKEN=github_pat_...' | sudo tee /etc/status-page.env > /dev/null
+sudo install -m 600 /dev/null /etc/stillup.env
+sudo tee /etc/stillup.env > /dev/null <<'EOF'
+STILLUP_TOKEN=github_pat_...
+STILLUP_REPOSITORY=<owner>/<repository>
+EOF
 ```
 
-Root-owned and `0600`: the token can start workflows in your repository.
+Root-owned and `0600`: the token can start workflows in your repository. The
+repository is the one the page runs from; name it as it is now, not by a name
+it had before, since GitHub stops redirecting an old name once it is reused.
 
 ## 3. Install the dispatch script
 
 ```bash
-sudo tee /usr/local/bin/status-page-dispatch > /dev/null <<'EOF'
+sudo tee /usr/local/bin/stillup-dispatch > /dev/null <<'EOF'
 #!/bin/sh
-# Starts one run of the status-page Uptime workflow.
+# Starts one run of the stillup Uptime workflow.
 set -eu
-. /etc/status-page.env
+. /etc/stillup.env
 
 body=$(mktemp)
 trap 'rm -f "$body"' EXIT
@@ -44,9 +50,9 @@ trap 'rm -f "$body"' EXIT
 code=$(curl -sS -o "$body" -w '%{http_code}' \
   -X POST \
   -H 'Accept: application/vnd.github+json' \
-  -H "Authorization: Bearer $STATUS_PAGE_TOKEN" \
+  -H "Authorization: Bearer $STILLUP_TOKEN" \
   -H 'X-GitHub-Api-Version: 2022-11-28' \
-  https://api.github.com/repos/sysmike/status-page/actions/workflows/uptime.yml/dispatches \
+  "https://api.github.com/repos/${STILLUP_REPOSITORY}/actions/workflows/uptime.yml/dispatches" \
   -d '{"ref":"main"}')
 
 case "$code" in
@@ -54,8 +60,8 @@ case "$code" in
   *) echo "dispatch failed: HTTP $code $(cat "$body")" >&2; exit 1 ;;
 esac
 EOF
-sudo chmod 755 /usr/local/bin/status-page-dispatch
-sudo /usr/local/bin/status-page-dispatch && echo "dispatched"
+sudo chmod 755 /usr/local/bin/stillup-dispatch
+sudo /usr/local/bin/stillup-dispatch && echo "dispatched"
 ```
 
 A successful call returns `204 No Content` and prints nothing.
@@ -65,7 +71,7 @@ A successful call returns `204 No Content` and prints nothing.
 systemd timer:
 
 ```bash
-sudo tee /etc/systemd/system/status-page.service > /dev/null <<'EOF'
+sudo tee /etc/systemd/system/stillup.service > /dev/null <<'EOF'
 [Unit]
 Description=Trigger the status page uptime checks
 After=network-online.target
@@ -73,10 +79,10 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/status-page-dispatch
+ExecStart=/usr/local/bin/stillup-dispatch
 EOF
 
-sudo tee /etc/systemd/system/status-page.timer > /dev/null <<'EOF'
+sudo tee /etc/systemd/system/stillup.timer > /dev/null <<'EOF'
 [Unit]
 Description=Trigger the status page uptime checks every five minutes
 
@@ -90,14 +96,14 @@ WantedBy=timers.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now status-page.timer
-systemctl list-timers status-page.timer
+sudo systemctl enable --now stillup.timer
+systemctl list-timers stillup.timer
 ```
 
 Or, with cron:
 
 ```
-*/5 * * * * /usr/local/bin/status-page-dispatch || logger -t status-page "dispatch failed"
+*/5 * * * * /usr/local/bin/stillup-dispatch || logger -t stillup "dispatch failed"
 ```
 
 `Persistent=true` is deliberately absent: a missed window is worth nothing
@@ -106,7 +112,7 @@ once it has passed, and catching up would only queue stale checks.
 ## 5. Verify
 
 ```bash
-curl -s "https://api.github.com/repos/sysmike/status-page/actions/runs?event=workflow_dispatch&per_page=5" \
+curl -s "https://api.github.com/repos/<owner>/<repository>/actions/runs?event=workflow_dispatch&per_page=5" \
   | python3 -c "import sys,json;[print(r['run_started_at'], r['status'], r['conclusion']) for r in json.load(sys.stdin)['workflow_runs']]"
 ```
 

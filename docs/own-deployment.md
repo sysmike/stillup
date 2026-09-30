@@ -25,7 +25,7 @@ afterwards.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `SYNC_UPSTREAM` | `sysmike/status-page` | The repository to follow |
+| `SYNC_UPSTREAM` | `sysmike/stillup` | The repository to follow |
 | `SYNC_REF` | `main` | The branch or tag to follow |
 | `SYNC_KEEP` | none | Further paths to leave alone, separated by spaces or commas |
 
@@ -48,11 +48,15 @@ Create an empty **public** repository, for example `status`, and copy the
 current one into it, history and all:
 
 ```bash
-git clone --bare https://github.com/<you>/status-page.git
-cd status-page.git
+git clone --bare https://github.com/<you>/stillup.git
+cd stillup.git
 git push --mirror https://github.com/<you>/status.git
-cd .. && rm -rf status-page.git
+cd .. && rm -rf stillup.git
 ```
+
+Pick a name your account has not used before. If the repository you are moving
+from was renamed, GitHub keeps redirecting its old name — to the scheduler, the
+page's refresh and your clones — only until a new repository takes that name.
 
 ### 2. Set it up
 

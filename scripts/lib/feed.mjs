@@ -61,7 +61,7 @@ export function atom({ title, url, repoUrl, incidents, t, duration, now = new Da
     '<feed xmlns="http://www.w3.org/2005/Atom">',
     `  <title>${escape(title)}</title>`,
     `  <subtitle>${escape(t('incidents.title'))}</subtitle>`,
-    `  <id>${escape(repoUrl || url || 'urn:status-page')}</id>`,
+    `  <id>${escape(repoUrl || url || 'urn:stillup')}</id>`,
     ...links,
     `  <updated>${escape(updated)}</updated>`,
     ...listed.map((incident) => entry(incident, t, duration)),
