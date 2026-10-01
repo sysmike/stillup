@@ -9,19 +9,31 @@ status page is published with GitHub Pages.
 
 ## Setup
 
-1. Fork or copy this repository.
-2. **Settings → Pages → Source**: select *GitHub Actions*.
-3. **Settings → Actions → General → Workflow permissions**: select *Read and
+1. **Fork this repository** and keep the fork public — see
+   [why](docs/sync.md#keep-it-public). Your page lives in the fork:
+   its history, incidents, variables and secrets.
+2. **Actions tab**: GitHub does not run a fork's workflows until you allow it,
+   so select *I understand my workflows, go ahead and enable them*.
+3. **Settings → General → Features**: tick *Issues*, which forks start without.
+   Incidents are issues, and the Uptime workflow fails without them. Under
+   *Issue permissions*, *Collaborators only* keeps the tracker to the people
+   who run the page.
+4. **Settings → Pages → Source**: select *GitHub Actions*.
+5. **Settings → Actions → General → Workflow permissions**: select *Read and
    write permissions*.
-4. Add one repository variable per monitor under **Settings → Secrets and
+6. Add one repository variable per monitor under **Settings → Secrets and
    variables → Actions → Variables** (see below), or a secret in the same place
    for a monitor whose URL should stay private.
-5. Run the **Uptime** workflow once from the Actions tab.
+7. Run the **Uptime** workflow once from the Actions tab.
 
-To keep your page apart from the project — its incidents, history and settings
-in one repository, the code in another — see
-[docs/own-deployment.md](docs/own-deployment.md). The **Sync** workflow then
-keeps the page's code up to date on its own.
+### Staying up to date
+
+The **Sync** workflow brings this project's changes into your fork once a day,
+runs the tests, and deploys the page. Your `history/` is never touched. Changes
+to the workflows themselves need a token that can push them: add one as the
+secret `SYNC_TOKEN`, as described in [docs/sync.md](docs/sync.md), which also
+covers following a tag instead of `main` and keeping your own changes to some
+files.
 
 ## Custom domain
 

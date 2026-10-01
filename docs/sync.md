@@ -1,11 +1,9 @@
-# Running the page from its own repository
+# Keeping your page up to date
 
-The project and a status page built from it want different things from a
-repository. The project wants public issues, so anyone can report a bug. A
-status page wants its issues to itself, since they are its incidents, and it
-carries its own history, variables and secrets. Keeping them in two
-repositories lets each have what it needs, and the **Sync** workflow keeps the
-deployment's code up to date with the project.
+Your page lives in a fork of this project, with its own history, incidents,
+variables and secrets. The **Sync** workflow keeps the fork's code up to date
+with the project, so the page gets fixes and features without you merging
+anything.
 
 ## What the sync does
 
@@ -51,10 +49,6 @@ Store it in that repository as the secret `SYNC_TOKEN`. Without it, a sync
 works as long as the project has not changed a workflow. One that has is
 stopped whole, with an error saying why, rather than taking the code without
 the workflows that go with it.
-
-While you are in the settings, **Settings → General → Features → Issues → Issue
-permissions**: *Collaborators only* keeps the page's issue tracker to the
-people who run it.
 
 ## If you also develop the code in your page's repository
 
