@@ -130,6 +130,15 @@ export default {
   'issue.autoClose': 'This issue closes automatically once the monitor recovers.',
   'issue.recovered': 'Recovered after {duration} — {code} in {ms}ms.',
 
+  'issue.updateTitle': 'An update changes workflows and waits for Sync to be run by hand',
+  'issue.updateIntro': 'The project this page follows has an update that changes its workflows: {commit}.',
+  'issue.updateWhy':
+    'GitHub may hold a changed workflow for approval before it runs again, and a held Uptime workflow checks nothing until someone approves it. So the nightly sync leaves this update, code included, for a run started by hand.',
+  'issue.updateSteps':
+    'Run [Sync]({url}) from the Actions tab. Then look at the Actions tab once more, and approve any run GitHub has held.',
+  'issue.updateAutoClose': 'This issue closes automatically once the update is applied.',
+  'issue.updateApplied': 'Applied: the page now runs {commit}.',
+
   'notify.down': '{name} is down',
   'notify.degraded': '{name} is degraded',
   'notify.up': '{name} is back up',

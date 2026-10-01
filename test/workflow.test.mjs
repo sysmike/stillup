@@ -62,7 +62,8 @@ test('the schedule leaves a workflow change for a person, and says so', () => {
   const hold = syncWorkflow.indexOf('id: hold');
   assert.ok(hold > 0 && hold < syncWorkflow.indexOf('run: node --test'), 'it decides before testing');
   assert.match(syncWorkflow, /if: steps\.sync\.outputs\.workflows == 'true' && github\.event_name == 'schedule'/);
-  assert.match(syncWorkflow, /node scripts\/sync-notice\.mjs/);
+  assert.match(syncWorkflow, /node scripts\/sync-notice\.mjs waiting/);
+  assert.match(syncWorkflow, /issues: write/);
   assert.ok(existsSync(new URL('../scripts/sync-notice.mjs', import.meta.url)));
 
   // Nothing of it is tested, committed or deployed.
@@ -71,4 +72,12 @@ test('the schedule leaves a workflow change for a person, and says so', () => {
     assert.match(head, /steps\.hold\.outputs\.held != 'true'/, `${step} waits`);
   }
   assert.match(syncWorkflow, /changed: \$\{\{ steps\.sync\.outputs\.changed == 'true' && steps\.hold\.outputs\.held != 'true' \}\}/);
+});
+
+test('a sync that leaves the page up to date closes the waiting-update issue', () => {
+  const close = syncWorkflow.indexOf('- name: Close the waiting-update issue');
+  assert.ok(close > syncWorkflow.indexOf('- name: Commit and push'), 'after the push');
+  const step = syncWorkflow.slice(close, syncWorkflow.indexOf('\n\n', close));
+  assert.match(step, /if: steps\.hold\.outputs\.held != 'true'/);
+  assert.match(step, /run: node scripts\/sync-notice\.mjs applied/);
 });

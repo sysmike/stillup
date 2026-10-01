@@ -33,10 +33,18 @@ GitHub holds a workflow it considers suspicious for approval before it runs
 again, and a workflow changed by an automated push can be held this way. A
 held Uptime workflow checks nothing until someone approves it, so the
 scheduled sync does not apply an update that changes a workflow. It leaves the
-whole update, code included, and sends an `update` notification to the page's
-[notification targets](../README.md#notifications) instead, every night until
-it is applied. Run **Sync** from the Actions tab to apply it, then look at the
-Actions tab once more: if GitHub has held a run, approve it there.
+whole update, code included, and says so in two places:
+
+- **An issue** in the page's repository, opened by the workflow. It carries no
+  incident label, so the page does not show it. A newer update edits it rather
+  than opening another, and the first sync that brings the page up to date
+  closes it.
+- **An `update` notification** to the page's
+  [notification targets](../README.md#notifications), every night until the
+  update is applied.
+
+Run **Sync** from the Actions tab to apply it, then look at the Actions tab
+once more: if GitHub has held a run, approve it there.
 
 ## Keep it public
 
