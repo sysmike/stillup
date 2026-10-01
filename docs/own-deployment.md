@@ -25,7 +25,7 @@ afterwards.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `SYNC_UPSTREAM` | `sysmike/stillup` | The repository to follow |
+| `SYNC_UPSTREAM` | `sysmike/stillup` | The repository to follow. Uptime, Pages and Sync do nothing in the repository it names |
 | `SYNC_REF` | `main` | The branch or tag to follow |
 | `SYNC_KEEP` | none | Further paths to leave alone, separated by spaces or commas |
 
@@ -69,7 +69,10 @@ would have to be moved and switched over; the code has none of them.
    built again.
 3. **Create an empty public repository** for the code, under the old name if
    you like. Do this after step 2: GitHub stops redirecting a renamed
-   repository's old name once a new repository takes it.
+   repository's old name once a new repository takes it. Unless the code's
+   repository is `sysmike/stillup`, set its own `SYNC_UPSTREAM` variable to its
+   own name before pushing anything: the workflows arrive with the code, and
+   this tells Uptime, Pages and Sync that there is no page there to run.
 4. **Copy the code into it without the page's data.** In a fresh clone of the
    page's repository, this removes `history/` from every commit and drops the
    status commits that are left empty, keeping everything else:
@@ -83,10 +86,7 @@ would have to be moved and switched over; the code has none of them.
    git push https://github.com/<you>/<code>.git main
    ```
 
-5. **In the code's repository, disable Uptime and Pages** under Actions,
-   straight away: their schedules start as soon as the workflows arrive, and
-   the code's repository has no page to run.
-6. **In the page's repository, set `SYNC_UPSTREAM`** to the code's repository,
+5. **In the page's repository, set `SYNC_UPSTREAM`** to the code's repository,
    unless it is `sysmike/stillup`, and add `SYNC_TOKEN` as above. From then on
    the page follows the code.
 

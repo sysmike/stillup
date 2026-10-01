@@ -16,6 +16,9 @@ concurrency:
 
 jobs:
   check:
+    # The project's own repository holds the code but no page, so there is
+    # nothing to check there. Skipping this skips the deploy as well.
+    if: github.repository != (vars.SYNC_UPSTREAM || 'sysmike/stillup')
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.incidents.outputs.changed }}

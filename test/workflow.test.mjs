@@ -37,10 +37,16 @@ test('the sync runs a script that exists', () => {
   assert.ok(existsSync(new URL(`../${called[0]}`, import.meta.url)));
 });
 
-test('the sync does nothing in the project it follows', () => {
-  // The project is its own upstream, and syncing it with itself would at best
-  // be a no-op and at worst a daily failure for want of a token.
-  assert.match(syncWorkflow, /if: github\.repository != \(vars\.SYNC_UPSTREAM \|\| 'sysmike\/stillup'\)/);
+test('nothing runs in the project itself', () => {
+  // The project's repository holds the code but no page: nothing to check,
+  // nothing to deploy, and nothing to sync with but itself. Each would fail
+  // there on its schedule, every day, unless someone remembered to disable it.
+  const guard = /if: github\.repository != \(vars\.SYNC_UPSTREAM \|\| 'sysmike\/stillup'\)/.source;
+  const pages = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
+  for (const [workflow, job] of [[uptime, 'check'], [pages, 'build'], [syncWorkflow, 'sync']]) {
+    const head = workflow.slice(workflow.indexOf(`  ${job}:`));
+    assert.match(head, new RegExp(`^  ${job}:\\n(    #.*\\n)*    ${guard}`), `the ${job} job is guarded`);
+  }
 });
 
 test('the sync tests before it commits, and deploys what it committed', () => {

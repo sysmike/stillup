@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   build:
+    # The project's own repository holds the code but no page to deploy.
+    if: github.repository != (vars.SYNC_UPSTREAM || 'sysmike/stillup')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
