@@ -10,8 +10,8 @@
 import { english } from '../../site/lang/i18n.mjs';
 import { sendMail } from './smtp.mjs';
 
-const COLORS = { down: '#f04438', degraded: '#f79009', up: '#12b76a', cert: '#f79009' };
-const MARKS = { down: '🔴', degraded: '🟠', up: '🟢', cert: '🟡' };
+const COLORS = { down: '#f04438', degraded: '#f79009', up: '#12b76a', cert: '#f79009', update: '#0969da' };
+const MARKS = { down: '🔴', degraded: '🟠', up: '🟢', cert: '🟡', update: '🔵' };
 
 export const SEND_TIMEOUT = 10000;
 
@@ -29,6 +29,9 @@ export function headline(event, t = english.t) {
   if (event.status === 'cert') {
     return `${mark} ${t('notify.cert', { name: event.name, count: event.daysLeft })}`;
   }
+  if (event.status === 'update') {
+    return `${mark} ${t('notify.update', { name: event.name })}`;
+  }
   const key =
     event.status === 'up'
       ? event.downFor
@@ -45,6 +48,7 @@ export function headline(event, t = english.t) {
 // followed by a colon.
 function facts(event, t) {
   return [
+    event.update ? { label: t('field.update'), value: `${event.update.upstream}@${event.update.sha.slice(0, 7)}` } : null,
     event.validTo ? { label: t('field.expires'), value: event.validTo } : null,
     event.issuer ? { label: t('field.issuer'), value: event.issuer } : null,
     event.error ? { label: t('field.error'), value: event.error } : null,
@@ -118,17 +122,18 @@ function teamsPayload(event, t, legacy) {
 }
 
 // Nothing is assumed about a custom endpoint, so it receives the event itself.
-const EVENT_NAMES = { up: 'recovered', cert: 'certificate', down: 'down', degraded: 'down' };
+const EVENT_NAMES = { up: 'recovered', cert: 'certificate', update: 'update', down: 'down', degraded: 'down' };
 
 const customPayload = (event, t) => ({
   event: EVENT_NAMES[event.status] || 'down',
   status: event.status,
   previousStatus: event.previousStatus,
-  monitor: { slug: event.slug, name: event.name, url: event.url || null },
+  monitor: event.slug ? { slug: event.slug, name: event.name, url: event.url || null } : null,
   error: event.error || null,
   code: event.code || null,
   downFor: event.downFor || null,
   certificate: event.validTo ? { validTo: event.validTo, daysLeft: event.daysLeft, issuer: event.issuer || null } : null,
+  update: event.update ? { upstream: event.update.upstream, sha: event.update.sha, url: event.url || null } : null,
   issue: event.issueUrl ? { number: event.issueNumber, url: event.issueUrl } : null,
   site: event.site || null,
   at: event.at,

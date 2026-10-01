@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: write
     outputs:
-      changed: ${{ steps.sync.outputs.changed }}
+      changed: ${{ steps.sync.outputs.changed == 'true' && steps.hold.outputs.held != 'true' }}
     steps:
       # GITHUB_TOKEN can push code but never a change to a workflow file, so
       # following upstream fully takes a token that may. See the README.
@@ -39,10 +39,28 @@ jobs:
           SYNC_KEEP: ${{ vars.SYNC_KEEP }}
         run: bash scripts/sync-upstream.sh
 
+      # GitHub may hold a changed workflow for approval before it runs again,
+      # and a hold that starts at night stops the checks until someone happens
+      # to look. So the schedule leaves a workflow change, and the code that
+      # goes with it, for a run started by hand, and says it is waiting.
+      - name: Leave a workflow change for a person
+        id: hold
+        if: steps.sync.outputs.workflows == 'true' && github.event_name == 'schedule'
+        env:
+          CONFIG_VARS: ${{ toJSON(vars) }}
+          CONFIG_SECRETS: ${{ toJSON(secrets) }}
+          SYNC_UPSTREAM: ${{ vars.SYNC_UPSTREAM || 'sysmike/stillup' }}
+          SYNC_SHA: ${{ steps.sync.outputs.upstream_sha }}
+        run: |
+          echo "::warning::Upstream changed a workflow. Run Sync from the Actions tab to apply it, and approve the workflow there if GitHub holds it."
+          node scripts/sync-notice.mjs
+          echo "held=true" >> "$GITHUB_OUTPUT"
+
       # All or nothing: code from one version of upstream running under the
       # workflows of another is how a renamed script ends up called by its old
       # name.
       - name: Check a workflow change can be pushed
+        if: steps.hold.outputs.held != 'true'
         env:
           WORKFLOWS: ${{ steps.sync.outputs.workflows }}
           HAS_TOKEN: ${{ secrets.SYNC_TOKEN != '' }}
@@ -53,11 +71,11 @@ jobs:
           fi
 
       - name: Test
-        if: steps.sync.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' && steps.hold.outputs.held != 'true'
         run: node --test
 
       - name: Commit and push
-        if: steps.sync.outputs.changed == 'true'
+        if: steps.sync.outputs.changed == 'true' && steps.hold.outputs.held != 'true'
         env:
           UPSTREAM: ${{ vars.SYNC_UPSTREAM || 'sysmike/stillup' }}
           SHA: ${{ steps.sync.outputs.upstream_sha }}

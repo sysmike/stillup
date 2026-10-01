@@ -172,3 +172,37 @@ test('one failing target does not stop the others, or the run', async () => {
   assert.match(logged[0], /failed: socket hang up/);
   assert.match(logged[1], /failed: 404 no_such_hook/);
 });
+
+const update = {
+  status: 'update',
+  name: 'Acme Status',
+  url: 'https://github.com/acme/status/actions/workflows/sync.yml',
+  update: { upstream: 'sysmike/stillup', sha: 'cc9ab97e0123456789abcdef0123456789abcdef' },
+  site: 'Acme Status',
+  at: '2026-03-01T03:23:00Z',
+};
+
+test('an update waiting for a person says where to apply it', async () => {
+  assert.equal(headline(update), '🔵 Acme Status: an update changes workflows and waits until Sync is run by hand');
+  const { subject, text } = buildMail(target('email', 'smtps://a@b.c'), update);
+  assert.equal(subject, headline(update));
+  assert.match(text, /^Update: sysmike\/stillup@cc9ab97$/m);
+  assert.match(text, /^URL: https:\/\/github\.com\/acme\/status\/actions\/workflows\/sync\.yml$/m);
+
+  const { t } = await load('de');
+  assert.match(headline(update, t), /^🔵 Acme Status: Ein Update ändert Workflows/);
+});
+
+test('a custom endpoint hears of an update without a monitor', () => {
+  assert.partialDeepStrictEqual(buildPayload(target('custom'), update), {
+    event: 'update',
+    status: 'update',
+    monitor: null,
+    update: {
+      upstream: 'sysmike/stillup',
+      sha: 'cc9ab97e0123456789abcdef0123456789abcdef',
+      url: 'https://github.com/acme/status/actions/workflows/sync.yml',
+    },
+  });
+  assert.equal(buildPayload(target('custom'), outage).update, null);
+});

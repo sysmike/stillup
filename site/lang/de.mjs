@@ -124,6 +124,8 @@ export default {
   'notify.degraded': '{name} ist beeinträchtigt',
   'notify.up': '{name} ist wieder erreichbar',
   'notify.upAfter': '{name} ist wieder erreichbar nach {duration}',
+  'notify.update': '{name}: Ein Update ändert Workflows und wird erst übernommen, wenn Sync von Hand läuft',
+  'field.update': 'Update',
 
   'a11y.toggleTheme': 'Design umschalten',
   'a11y.close': 'Schließen',

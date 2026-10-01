@@ -27,6 +27,17 @@ afterwards.
 | `SYNC_REF` | `main` | The branch or tag to follow |
 | `SYNC_KEEP` | none | Further paths to leave alone, separated by spaces or commas |
 
+### Workflow changes
+
+GitHub holds a workflow it considers suspicious for approval before it runs
+again, and a workflow changed by an automated push can be held this way. A
+held Uptime workflow checks nothing until someone approves it, so the
+scheduled sync does not apply an update that changes a workflow. It leaves the
+whole update, code included, and sends an `update` notification to the page's
+[notification targets](../README.md#notifications) instead, every night until
+it is applied. Run **Sync** from the Actions tab to apply it, then look at the
+Actions tab once more: if GitHub has held a run, approve it there.
+
 ## Keep it public
 
 The page reads `history/live.json` from `raw.githubusercontent.com` to refresh

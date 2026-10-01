@@ -305,8 +305,10 @@ table fails the run rather than quietly going out as JSON.
 A notification goes out when an incident opens and when it closes, so the same
 `INCIDENT_THRESHOLD` that decides an issue is worth opening decides this too; a
 single failed check notifies nobody. Restrict a destination to some of that with
-`"events"`, any of `down`, `degraded`, `up` and `cert`. A failing destination is
-logged and skipped — it never fails the run or blocks the others.
+`"events"`, any of `down`, `degraded`, `up`, `cert` and `update` — the last
+when an update to the code is waiting to be applied by hand, see
+[docs/sync.md](docs/sync.md#workflow-changes). A failing destination is logged
+and skipped — it never fails the run or blocks the others.
 
 ### Custom webhooks
 
@@ -331,7 +333,8 @@ A custom endpoint receives the event itself:
 
 `downFor` is filled in on recovery, `error` and `code` on an outage, and
 `certificate` on a `cert` event, where it carries `validTo`, `daysLeft` and
-`issuer`. A private monitor sends no URL, the same as everywhere else. Add
+`issuer`. An `update` event has no `monitor`; its `update` carries `upstream`,
+`sha` and the `url` of the Sync workflow to run. A private monitor sends no URL, the same as everywhere else. Add
 `"headers"` for an endpoint that wants a token, and `"method"` if it does not
 want `POST`.
 

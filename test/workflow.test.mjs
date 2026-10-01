@@ -55,3 +55,20 @@ test('the sync tests before it commits, and deploys what it committed', () => {
   assert.ok(test > 0 && test < commit, 'the tests run before the commit');
   assert.match(syncWorkflow, /uses: \.\/\.github\/workflows\/pages\.yml/);
 });
+
+test('the schedule leaves a workflow change for a person, and says so', () => {
+  // GitHub may hold a changed workflow for approval, and one held at night
+  // stopped the checks for hours until someone looked.
+  const hold = syncWorkflow.indexOf('id: hold');
+  assert.ok(hold > 0 && hold < syncWorkflow.indexOf('run: node --test'), 'it decides before testing');
+  assert.match(syncWorkflow, /if: steps\.sync\.outputs\.workflows == 'true' && github\.event_name == 'schedule'/);
+  assert.match(syncWorkflow, /node scripts\/sync-notice\.mjs/);
+  assert.ok(existsSync(new URL('../scripts/sync-notice.mjs', import.meta.url)));
+
+  // Nothing of it is tested, committed or deployed.
+  for (const step of ['Test', 'Commit and push']) {
+    const head = syncWorkflow.slice(syncWorkflow.indexOf(`- name: ${step}`)).split('\n')[1];
+    assert.match(head, /steps\.hold\.outputs\.held != 'true'/, `${step} waits`);
+  }
+  assert.match(syncWorkflow, /changed: \$\{\{ steps\.sync\.outputs\.changed == 'true' && steps\.hold\.outputs\.held != 'true' \}\}/);
+});

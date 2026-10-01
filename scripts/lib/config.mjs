@@ -16,7 +16,7 @@ import { TARGET_TYPES } from './notify.mjs';
 const MONITOR_PREFIX = 'MONITOR_';
 const GROUP_PREFIX = 'GROUP_';
 const NOTIFY_PREFIX = 'NOTIFY_';
-const NOTIFY_EVENTS = ['down', 'degraded', 'up', 'cert'];
+const NOTIFY_EVENTS = ['down', 'degraded', 'up', 'cert', 'update'];
 const DEFAULT_INCIDENT_LABELS = ['status', 'incident'];
 
 const DEFAULTS = {

@@ -134,6 +134,8 @@ export default {
   'notify.degraded': '{name} is degraded',
   'notify.up': '{name} is back up',
   'notify.upAfter': '{name} is back up after {duration}',
+  'notify.update': '{name}: an update changes workflows and waits until Sync is run by hand',
+  'field.update': 'Update',
 
   'a11y.toggleTheme': 'Toggle theme',
   'a11y.close': 'Close',
