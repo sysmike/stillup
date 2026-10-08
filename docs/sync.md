@@ -15,6 +15,11 @@ deployment's files match the project's, with two exceptions:
 - Paths listed in the `SYNC_KEEP` variable stay as the deployment has them — a
   translated issue template, say, or a logo under `site/`.
 
+The most common one is `README.md`, so that the page's repository can describe
+the page rather than the project. Set `SYNC_KEEP` before pushing your own
+README: until then, each sync puts the project's back. A kept README no longer
+follows the project's, so link to the project for the documentation.
+
 Files the project changed, added or deleted are changed, added or deleted here
 too. The tests run before anything is committed; if they fail, nothing is. The
 result is one commit on top of the deployment's own, so the status commits the
