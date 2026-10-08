@@ -129,6 +129,15 @@ export default {
   'issue.updateAutoClose': 'Dieses Issue wird automatisch geschlossen, sobald das Update übernommen ist.',
   'issue.updateApplied': 'Übernommen: Die Seite läuft jetzt mit {commit}.',
 
+  'issue.heldTitle': 'GitHub hält Workflow-Läufe zur Freigabe zurück',
+  'issue.heldIntro': 'GitHub hält den neuesten Lauf dieser Workflows zur Freigabe zurück. Sie tun nichts, bis jemand sie freigibt:',
+  'issue.heldItem': '[{name}]({url}), zurückgehalten seit {since}',
+  'issue.heldWhy':
+    'GitHub hält einen Workflow-Lauf zurück, den es für verdächtig hält, etwa nachdem sich eine Workflow-Datei geändert hat. Solange Uptime zurückgehalten wird, wird kein Monitor geprüft.',
+  'issue.heldSteps':
+    'Jeden Workflow und seinen neuesten Lauf öffnen, die Änderungen ansehen und freigeben. Dieses Issue wird automatisch geschlossen, sobald nichts mehr zurückgehalten wird.',
+  'issue.heldCleared': 'Es wird nichts mehr zurückgehalten.',
+
   'notify.down': '{name} ist ausgefallen',
   'notify.degraded': '{name} ist beeinträchtigt',
   'notify.up': '{name} ist wieder erreichbar',

@@ -139,6 +139,15 @@ export default {
   'issue.updateAutoClose': 'This issue closes automatically once the update is applied.',
   'issue.updateApplied': 'Applied: the page now runs {commit}.',
 
+  'issue.heldTitle': 'GitHub holds workflow runs for approval',
+  'issue.heldIntro': 'GitHub is holding the newest run of these workflows for approval. They do nothing until someone approves them:',
+  'issue.heldItem': '[{name}]({url}), held since {since}',
+  'issue.heldWhy':
+    'GitHub holds a workflow run it considers suspicious, which can happen after a workflow file has changed. While Uptime is held, no monitor is checked.',
+  'issue.heldSteps':
+    'Open each workflow and its newest run, look over what changed, and approve it. This issue closes automatically once nothing is held.',
+  'issue.heldCleared': 'Nothing is held any more.',
+
   'notify.down': '{name} is down',
   'notify.degraded': '{name} is degraded',
   'notify.up': '{name} is back up',

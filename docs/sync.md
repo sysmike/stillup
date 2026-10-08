@@ -49,7 +49,9 @@ whole update, code included, and says so in two places:
   update is applied.
 
 Run **Sync** from the Actions tab to apply it, then look at the Actions tab
-once more: if GitHub has held a run, approve it there.
+once more: if GitHub has held a run, approve it there. A hold that shows up
+later, such as Sync's own the next night, is reported by the **Watch**
+workflow, which keeps an issue open for as long as anything is held.
 
 ## Keep it public
 

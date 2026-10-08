@@ -381,6 +381,15 @@ mail server offers for authenticated sending anyway.
 `.github/workflows/pages.yml` runs `scripts/build.mjs`, which turns the history
 into `_site/api/*.json` next to the static page in `site/`.
 
+`.github/workflows/watch.yml` runs hourly and keeps an issue open for as long
+as GitHub holds one of the other workflows for approval. GitHub holds a run it
+considers suspicious, which can happen after a workflow file changes, and a
+held run does nothing — a held Uptime checks no monitor — so it cannot report
+the hold itself. The issue carries no incident label, so the page does not show
+it, and it closes once nothing is held. Watch itself is kept as small as it can
+be, with everything it does in `scripts/watch.mjs`, so that it has as little
+reason as possible to change and be held in turn.
+
 History is stored per monitor as CSV:
 
 ```

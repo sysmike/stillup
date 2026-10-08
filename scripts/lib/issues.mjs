@@ -32,6 +32,21 @@ export function isTrusted(item) {
   return item?.user?.type === 'Bot' && item.user.login === WORKFLOW_BOT;
 }
 
+// An issue a workflow keeps open about the repository itself, found again by
+// its marker. Only the workflow's own counts: anyone who can open an issue can
+// type the marker, and the workflow would otherwise edit or close theirs.
+export function findWorkflowIssue(issues, marker) {
+  return (
+    issues.find(
+      (issue) =>
+        !issue.pull_request &&
+        issue.user?.type === 'Bot' &&
+        issue.user.login === WORKFLOW_BOT &&
+        (issue.body || '').includes(marker),
+    ) || null
+  );
+}
+
 // An issue this workflow opened carries the marker, and it only opens issues
 // for monitors that stopped answering. Such an issue is an outage whatever
 // labels it ended up with, which keeps a stray maintenance label from

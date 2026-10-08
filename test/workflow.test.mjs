@@ -43,7 +43,8 @@ test('nothing runs in the project itself', () => {
   // there on its schedule, every day, unless someone remembered to disable it.
   const guard = /if: github\.repository != \(vars\.SYNC_UPSTREAM \|\| 'sysmike\/stillup'\)/.source;
   const pages = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
-  for (const [workflow, job] of [[uptime, 'check'], [pages, 'build'], [syncWorkflow, 'sync']]) {
+  const watch = readFileSync(new URL('../.github/workflows/watch.yml', import.meta.url), 'utf8');
+  for (const [workflow, job] of [[uptime, 'check'], [pages, 'build'], [syncWorkflow, 'sync'], [watch, 'watch']]) {
     const head = workflow.slice(workflow.indexOf(`  ${job}:`));
     assert.match(head, new RegExp(`^  ${job}:\\n(    #.*\\n)*    ${guard}`), `the ${job} job is guarded`);
   }
@@ -80,4 +81,15 @@ test('a sync that leaves the page up to date closes the waiting-update issue', (
   const step = syncWorkflow.slice(close, syncWorkflow.indexOf('\n\n', close));
   assert.match(step, /if: steps\.hold\.outputs\.held != 'true'/);
   assert.match(step, /run: node scripts\/sync-notice\.mjs applied/);
+});
+
+test('the watch is small enough to stay as it is', () => {
+  // A changed workflow file is what GitHub holds, and a held watch reports
+  // nothing — so everything it does is in a script, and it is given no secret.
+  const watch = readFileSync(new URL('../.github/workflows/watch.yml', import.meta.url), 'utf8');
+  assert.match(watch, /run: node scripts\/watch\.mjs/);
+  assert.ok(existsSync(new URL('../scripts/watch.mjs', import.meta.url)));
+  assert.doesNotMatch(watch, /secrets/);
+  assert.match(watch, /actions: read/);
+  assert.match(watch, /issues: write/);
 });
