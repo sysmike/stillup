@@ -14,6 +14,7 @@ import {
   MAINTENANCE_LABEL,
   affectedMonitors,
   isMaintenance,
+  isOpenIncident,
   isTrusted,
   marker,
   markedMonitor,
@@ -72,10 +73,36 @@ const open = (
   await api(`/repos/${repo}/issues?state=open&labels=${encodeURIComponent(primaryLabel)}&per_page=100`)
 ).filter(isTrusted);
 
+// That listing is not a reliable record of what is open. GitHub has been seen
+// to answer it with nothing at all, several runs in a row while incidents were
+// open, and each of those runs opened another issue for a monitor that already
+// had one. state.json remembers the issue a down monitor was given, and asking
+// for it by number returns the issue itself rather than a listing of it.
+async function rememberedIssue(number, slug) {
+  if (!number) return null;
+  try {
+    const issue = await api(`/repos/${repo}/issues/${number}`);
+    return isOpenIncident(issue, slug) ? issue : null;
+  } catch (error) {
+    // Gone is an answer. Anything else is not, and taking it for one would open
+    // the very duplicate this is here to prevent.
+    if (/→ (404|410) /.test(String(error.message))) return null;
+    throw error;
+  }
+}
+
+// Issues this run found open, and the ones it opened, so the snapshot below can
+// tell a listing that left them out.
+const known = new Set();
+const opened = [];
+
 for (const result of results) {
   const previous = state[result.slug] || { status: 'up', since: result.timestamp, failures: 0 };
-  const issue = open.find((candidate) => (candidate.body || '').includes(marker(result.slug)));
+  const issue =
+    open.find((candidate) => (candidate.body || '').includes(marker(result.slug))) ||
+    (await rememberedIssue(previous.issue, result.slug));
   const down = result.status === 'down';
+  if (down && issue) known.add(issue.number);
   const failures = down ? previous.failures + 1 : 0;
   if (previous.status !== result.status) changed = true;
 
@@ -102,6 +129,7 @@ for (const result of results) {
       },
     });
     console.log(`opened #${created.number} for ${result.slug}`);
+    opened.push(created);
     // The same threshold that is worth an issue is worth a notification: a
     // single failed check never reaches either.
     await notify(
@@ -221,40 +249,64 @@ async function commentsFor(issue) {
   };
 }
 
-const comments = new Map();
-for (const issue of recent) {
-  if (!issue.pull_request) comments.set(issue.number, await commentsFor(issue));
+async function snapshotOf(issues) {
+  const comments = new Map();
+  for (const issue of issues) {
+    if (!issue.pull_request) comments.set(issue.number, await commentsFor(issue));
+  }
+
+  return JSON.stringify(
+    issues
+      .filter((issue) => !issue.pull_request)
+      .map((issue) => {
+        const maintenance = isMaintenance(issue);
+        return {
+          number: issue.number,
+          title: issue.title,
+          url: issue.html_url,
+          state: issue.state,
+          createdAt: issue.created_at,
+          closedAt: issue.closed_at,
+          labels: issue.labels.map((label) => label.name),
+          monitor: markedMonitor(issue.body),
+          monitors: affectedMonitors(issue.body, monitors, settings.monitorsHeading),
+          // Only planned work has a window worth reading; an outage started when
+          // it started.
+          startsAt: maintenance ? windowStart(issue.body, settings.windowHeading) : null,
+          // The page renders this itself so a reader never has to leave for GitHub.
+          body: stripMarker(issue.body).trim().slice(0, 2000),
+          maintenance,
+          commentCount: comments.get(issue.number)?.count ?? 0,
+          seenComments: issue.comments,
+          comments: comments.get(issue.number)?.comments ?? [],
+        };
+      }),
+    null,
+    2,
+  );
 }
 
-const snapshot = JSON.stringify(
-  recent
-    .filter((issue) => !issue.pull_request)
-    .map((issue) => {
-      const maintenance = isMaintenance(issue);
-      return {
-        number: issue.number,
-        title: issue.title,
-        url: issue.html_url,
-        state: issue.state,
-        createdAt: issue.created_at,
-        closedAt: issue.closed_at,
-        labels: issue.labels.map((label) => label.name),
-        monitor: markedMonitor(issue.body),
-        monitors: affectedMonitors(issue.body, monitors, settings.monitorsHeading),
-        // Only planned work has a window worth reading; an outage started when
-        // it started.
-        startsAt: maintenance ? windowStart(issue.body, settings.windowHeading) : null,
-        // The page renders this itself so a reader never has to leave for GitHub.
-        body: stripMarker(issue.body).trim().slice(0, 2000),
-        maintenance,
-        commentCount: comments.get(issue.number)?.count ?? 0,
-        seenComments: issue.comments,
-        comments: comments.get(issue.number)?.comments ?? [],
-      };
-    }),
-  null,
-  2,
-);
+// The same listing that can come back empty above can here, and a snapshot made
+// from it takes every incident off the page. One that leaves out an issue this
+// run found open is not trusted with that: the previous snapshot is kept, and
+// the next run makes a new one.
+//
+// An issue opened a moment ago is another matter. The listing never has it yet,
+// and this run holds it whole, so it goes on the page now rather than a run
+// later.
+const listed = new Set(recent.map((issue) => issue.number));
+const missing = [...known].filter((number) => !listed.has(number));
+if (missing.length) {
+  console.log(
+    `::warning::The issue listing left out open #${missing.join(', #')}; keeping the previous incident snapshot.`,
+  );
+}
+const snapshot = missing.length
+  ? JSON.stringify(readJson(INCIDENTS_FILE, []), null, 2)
+  : await snapshotOf([
+      ...opened.filter((issue) => !listed.has(issue.number)).reverse(),
+      ...recent,
+    ]);
 
 // An incident opened or closed by hand, planned maintenance included, changes
 // what the page shows just as much as a monitor going down does.
