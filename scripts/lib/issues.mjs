@@ -32,6 +32,18 @@ export function isTrusted(item) {
   return item?.user?.type === 'Bot' && item.user.login === WORKFLOW_BOT;
 }
 
+// Whether an issue is the open incident for a monitor: still open, from someone
+// who can speak for the page, and carrying that monitor's marker. This is what
+// the listing of open issues is filtered down to, for an issue read on its own.
+export function isOpenIncident(issue, slug) {
+  return (
+    issue?.state === 'open' &&
+    !issue.pull_request &&
+    isTrusted(issue) &&
+    (issue.body || '').includes(marker(slug))
+  );
+}
+
 // An issue a workflow keeps open about the repository itself, found again by
 // its marker. Only the workflow's own counts: anyone who can open an issue can
 // type the marker, and the workflow would otherwise edit or close theirs.
